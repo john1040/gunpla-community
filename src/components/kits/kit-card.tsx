@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { type Database } from '@/lib/supabase/types'
+import { type Database } from '@/utils/supabase/types'
 
 type Kit = Database['public']['Tables']['kits']['Row']
 type KitImage = Database['public']['Tables']['kit_images']['Row']

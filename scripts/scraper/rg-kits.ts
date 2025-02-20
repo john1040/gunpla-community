@@ -2,7 +2,7 @@ import axios from 'axios'
 import * as cheerio from 'cheerio'
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
-import { Database } from '../../src/lib/supabase/types'
+import { Database } from '../../src/utils/supabase/types'
 
 // Load environment variables
 dotenv.config()

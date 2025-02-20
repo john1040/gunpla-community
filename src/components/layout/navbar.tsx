@@ -1,30 +1,48 @@
-'use client'
+"use client"
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import { Session, User } from '@supabase/supabase-js'
+import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 import { useEffect, useState } from 'react'
 
 export function Navbar() {
   const pathname = usePathname()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null)
-      }
-    )
-
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+      if (session) {
+        setUser(session.user)
+      } else {
+        setUser(null)
+      }
+      setIsLoading(false)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setUser(session.user)
+      } else {
+        setUser(null)
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        // Optional: Redirect to home page on sign out
+        window.location.href = '/'
+      }
     })
 
     return () => {
-      authListener.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -34,16 +52,33 @@ export function Navbar() {
   ]
 
   const handleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+
+      if (error) {
+        console.error('Sign in error:', error.message)
+        // Optional: Show error to user via toast notification
+      }
+    } catch (error) {
+      console.error('Unexpected error during sign in:', error)
+    }
   }
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Sign out error:', error.message)
+        // Optional: Show error to user via toast notification
+      }
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error)
+    }
   }
 
   return (
@@ -64,19 +99,28 @@ export function Navbar() {
           ))}
         </div>
         <div className="ml-auto flex items-center space-x-4">
-          {user ? (
+          {isLoading ? (
+            <div className="h-9 w-[120px] animate-pulse rounded-md bg-muted" />
+          ) : user ? (
             <>
-              <Link href="/profile">
-                <Button variant="ghost" className="text-sm font-medium">
-                  Profile
-                </Button>
-              </Link>
-              <Button onClick={handleSignOut} variant="ghost" className="text-sm font-medium">
+              <Button asChild variant="ghost" className="text-sm font-medium">
+                <Link href="/profile">
+                  {user.email?.split('@')[0] ?? 'Profile'}
+                </Link>
+              </Button>
+              <Button 
+                onClick={handleSignOut} 
+                variant="ghost" 
+                className="text-sm font-medium"
+              >
                 Sign Out
               </Button>
             </>
           ) : (
-            <Button onClick={handleSignIn} className="text-sm font-medium">
+            <Button 
+              onClick={handleSignIn} 
+              className="text-sm font-medium"
+            >
               Sign In with Google
             </Button>
           )}
