@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 export function Navbar() {
   const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
+  const [displayName, setDisplayName] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
@@ -19,8 +20,10 @@ export function Navbar() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUser(session.user)
+        fetchUserProfile(session.user.id)
       } else {
         setUser(null)
+        setDisplayName(null)
       }
       setIsLoading(false)
     })
@@ -31,8 +34,10 @@ export function Navbar() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setUser(session.user)
+        fetchUserProfile(session.user.id)
       } else {
         setUser(null)
+        setDisplayName(null)
       }
       
       if (event === 'SIGNED_OUT') {
@@ -45,6 +50,21 @@ export function Navbar() {
       subscription.unsubscribe()
     }
   }, [])
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+      setDisplayName(profile?.display_name)
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
 
   const navItems = [
     { href: '/', label: 'Home' },
@@ -105,7 +125,7 @@ export function Navbar() {
             <>
               <Button asChild variant="ghost" className="text-sm font-medium">
                 <Link href="/profile">
-                  {user.email?.split('@')[0] ?? 'Profile'}
+                  {displayName || 'Profile'}
                 </Link>
               </Button>
               <Button 

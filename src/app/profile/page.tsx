@@ -1,37 +1,81 @@
-
 import { createClient } from "@/utils/supabase/server";
-import { InfoIcon } from "lucide-react";
-import { redirect } from "next/navigation";
+import { ensureUserProfile } from "@/utils/supabase/ensure-profile";
+import { User } from "@supabase/supabase-js";
 
-export default async function ProtectedPage() {
+export default async function ProfilePage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) {
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Authentication Error</h1>
+        <p className="text-red-600">{userError.message}</p>
+      </div>
+    );
+  }
+  
   if (!user) {
-    return redirect("/sign-in");
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Not Logged In</h1>
+        <p>Please log in to view your profile.</p>
+      </div>
+    );
+  }
+
+  // Ensure profile exists and get profile data
+  const result = await ensureUserProfile(supabase);
+  
+  if ('error' in result && result.error) {
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Profile Error</h1>
+        <div className="bg-red-50 border border-red-200 p-4 rounded mb-4">
+          <h2 className="font-bold text-red-800 mb-2">Error Details:</h2>
+          <p className="text-red-700">{result.error}</p>
+          {result.details && (
+            <pre className="mt-2 p-2 bg-red-100 rounded text-sm overflow-auto">
+              {JSON.stringify(result.details, null, 2)}
+            </pre>
+          )}
+        </div>
+        <div className="bg-gray-100 p-4 rounded">
+          <h2 className="font-bold mb-2">User Information:</h2>
+          <DisplayUserInfo user={user} />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          {JSON.stringify(user, null, 2)}
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Profile</h1>
+      <div className="bg-gray-100 p-4 rounded">
+        <h2 className="font-bold mb-2">User Information:</h2>
+        <pre className="overflow-auto">
+          {JSON.stringify({ 
+            profile: result.profile,
+            user: {
+              id: user.id,
+              email: user.email,
+              metadata: user.user_metadata
+            }
+          }, null, 2)}
         </pre>
       </div>
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next steps</h2>
-      </div>
     </div>
+  );
+}
+
+function DisplayUserInfo({ user }: { user: User }) {
+  return (
+    <pre className="overflow-auto">
+      {JSON.stringify({ 
+        userId: user.id, 
+        email: user.email,
+        metadata: user.user_metadata 
+      }, null, 2)}
+    </pre>
   );
 }

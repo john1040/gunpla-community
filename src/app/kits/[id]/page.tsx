@@ -1,125 +1,245 @@
-import { getKitWithDetails } from '@/lib/supabase/queries'
-import Link from 'next/link'
-import { notFound } from 'next/navigation'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
+"use client"
 
-export default async function KitPage({
-  params: { id },
-}: {
-  params: { id: string }
-}) {
-  const kit = await getKitWithDetails(id)
+import { notFound } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import rgKits from '../../../../public/data/rg.json'
+import { ImageCarousel } from '@/components/kits/image-carousel'
+import { CommentsSection } from '@/components/kits/comments-section'
+import { useEffect, useState } from 'react'
+import { addRating, getKitRating, addToWantedList, removeFromWantedList, isInWantedList } from '@/utils/supabase/kit-interactions'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useToast } from '@/components/ui/use-toast'
+import { use } from 'react'
+
+interface Rating {
+  average: number
+  count: number
+}
+
+function getKitById(targetId: string) {
+  return rgKits.find(kit => {
+    const id = kit.url.split("/").filter(Boolean).pop() || ""
+    return id === targetId
+  })
+}
+
+interface KitPageProps {
+  params: Promise<{ id: string }>
+}
+
+export default function KitPage({ params }: KitPageProps) {
+  const { id } = use(params)
+  const kit = getKitById(id)
+  const [rating, setRating] = useState<Rating | null>(null)
+  const [isRating, setIsRating] = useState(false)
+  const [isInWanted, setIsInWanted] = useState(false)
+  const [isUpdatingWanted, setIsUpdatingWanted] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const supabase = createClientComponentClient()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    // Load rating and wanted status
+    const loadData = async () => {
+      try {
+        const [rating, wanted] = await Promise.all([
+          getKitRating(id),
+          isInWantedList(id)
+        ])
+        setRating(rating)
+        setIsInWanted(wanted)
+      } catch (error) {
+        console.error("Error loading data:", error)
+      }
+    }
+
+    // Get current user
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+
+    loadData()
+    getUser()
+
+    // Subscribe to wanted list changes
+    const channel = supabase
+      .channel('wanted_list')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'wanted_list',
+        filter: `kit_id=eq.${id}`
+      }, async () => {
+        // Refresh wanted list status
+        const wanted = await isInWantedList(id)
+        setIsInWanted(wanted)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [id, supabase])
 
   if (!kit) {
     notFound()
+  }
+
+  const handleRate = async (newRating: number) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to rate kits.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsRating(true)
+    try {
+      await addRating(id, newRating)
+      const updatedRating = await getKitRating(id)
+      setRating(updatedRating)
+      toast({
+        title: "Rating submitted",
+        description: "Thank you for your rating!"
+      })
+    } catch (error) {
+      console.error("Error submitting rating:", error)
+      toast({
+        title: "Error submitting rating",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsRating(false)
+    }
+  }
+
+  const handleWantedListToggle = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to manage your wanted list.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsUpdatingWanted(true)
+    try {
+      if (isInWanted) {
+        await removeFromWantedList(id)
+        setIsInWanted(false)
+        toast({
+          description: "Removed from wanted list"
+        })
+      } else {
+        await addToWantedList(id)
+        setIsInWanted(true)
+        toast({
+          description: "Added to wanted list!"
+        })
+      }
+    } catch (error) {
+      console.error("Error updating wanted list:", error)
+      toast({
+        title: "Error updating wanted list",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUpdatingWanted(false)
+    }
   }
 
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Image Gallery */}
+          {/* Image Carousel */}
           <div>
-            <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
-              {kit.kit_images?.[0]?.image_url ? (
-                <Image
-                  src={kit.kit_images[0].image_url}
-                  alt={kit.name_en}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  No Image Available
-                </div>
-              )}
-            </div>
+            <ImageCarousel images={kit.imgUrlList} title={kit.title} />
           </div>
 
           {/* Kit Details */}
           <div>
-            <h1 className="text-3xl font-bold mb-2">{kit.name_en}</h1>
-            {kit.name_jp && (
-              <h2 className="text-xl text-muted-foreground mb-4">{kit.name_jp}</h2>
-            )}
-            
+            <h1 className="text-3xl font-bold mb-2">{kit.title}</h1>
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-4">
-                  <span className="text-2xl font-semibold">
-                    ★ {kit.average_rating?.toFixed(1) ?? 'No ratings'}
-                  </span>
-                  {kit.ratings?.length ? (
-                    <span className="text-muted-foreground">
-                      ({kit.ratings.length} ratings)
-                    </span>
-                  ) : null}
+                  {rating ? (
+                    <>
+                      <span className="text-2xl font-semibold">
+                        ★ {rating.average.toFixed(1)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        ({rating.count} {rating.count === 1 ? 'rating' : 'ratings'})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">No ratings yet</span>
+                  )}
                 </div>
+                {user && (
+                  <div className="mt-2">
+                    <div className="text-sm text-muted-foreground mb-1">Rate this kit:</div>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => handleRate(star)}
+                          disabled={isRating}
+                          className={`text-2xl transition-colors ${
+                            isRating ? 'cursor-not-allowed opacity-50' : 'hover:text-yellow-400'
+                          }`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
                 <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                  {kit.grade}
+                  RG
                 </span>
                 <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                  {kit.scale}
+                  1/144
                 </span>
               </div>
 
-              {kit.description && (
-                <p className="text-muted-foreground">{kit.description}</p>
-              )}
+              <div className="space-y-2">
+                <p className="font-medium">Release Date: {kit.releaseDate}</p>
+                <p className="font-medium">Price: {kit.price}</p>
+                {kit.exclusive && (
+                  <p className="text-blue-600">{kit.exclusive}</p>
+                )}
+              </div>
 
-              <Button className="w-full">Add to Wanted List</Button>
+              <Button 
+                className="w-full"
+                variant={isInWanted ? "default" : "outline"}
+                onClick={handleWantedListToggle}
+                disabled={isUpdatingWanted}
+              >
+                {isUpdatingWanted ? (
+                  "Updating..."
+                ) : isInWanted ? (
+                  "Remove from Wanted List"
+                ) : (
+                  "Add to Wanted List"
+                )}
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Comments Section */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6">Comments</h2>
-          <div className="space-y-6">
-            {kit.comments?.length ? (
-              kit.comments.map((comment) => (
-                <div key={comment.id} className="border-b pb-6">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      {comment.user.avatar ? (
-                        <Image
-                          src={comment.user.avatar}
-                          alt={comment.user.name}
-                          width={40}
-                          height={40}
-                          className="rounded-full"
-                        />
-                      ) : (
-                        <span className="text-lg text-gray-500">
-                          {comment.user.name[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">{comment.user.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-muted-foreground">{comment.content}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
-                      ♥ {comment.likes}
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground">No comments yet.</p>
-            )}
-          </div>
-        </div>
+        <CommentsSection kitId={id} />
       </div>
     </div>
   )

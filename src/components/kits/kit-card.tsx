@@ -1,51 +1,42 @@
-import Image from 'next/image'
-import Link from 'next/link'
-import { type Database } from '@/utils/supabase/types'
+"use client"
 
-type Kit = Database['public']['Tables']['kits']['Row']
-type KitImage = Database['public']['Tables']['kit_images']['Row']
+import Link from "next/link"
 
 interface KitCardProps {
-  kit: Kit
-  image?: KitImage
-  rating?: number
-  ratingCount?: number
+  title: string
+  imageUrl?: string
+  price: string
+  releaseDate: string
+  exclusive: string
+  url: string
 }
 
-export function KitCard({ kit, image, rating, ratingCount }: KitCardProps) {
+export function KitCard({ title, imageUrl, price, releaseDate, exclusive, url }: KitCardProps) {
+  // Extract the ID from either format:
+  // "/item/6469/" -> "6469"
+  // "https://p-bandai.jp/item/item-1000216105/" -> "item-1000216105"
+  const id = url.split("/").filter(Boolean).pop() || ""
+  
   return (
-    <Link href={`/kits/${kit.id}`}>
-      <div className="border rounded-lg p-4 transition-shadow hover:shadow-md">
-        <div className="aspect-square relative mb-4 bg-gray-100 rounded-md overflow-hidden">
-          {image ? (
-            <Image
-              src={image.image_url}
-              alt={kit.name_en}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+    <Link href={`/kits/${id}`} className="block">
+      <div className="border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer">
+        <div className="aspect-square bg-gray-100 rounded-md mb-4 overflow-hidden">
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt={title}
+              className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              No Image
-            </div>
           )}
         </div>
-        <h3 className="text-lg font-semibold truncate">{kit.name_en}</h3>
-        {kit.name_jp && (
-          <p className="text-sm text-muted-foreground truncate">{kit.name_jp}</p>
-        )}
-        <p className="text-sm text-muted-foreground">{kit.grade}</p>
-        {typeof rating !== 'undefined' && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-sm">★ {rating.toFixed(1)}</span>
-            {typeof ratingCount !== 'undefined' && (
-              <span className="text-sm text-muted-foreground">
-                ({ratingCount} ratings)
-              </span>
-            )}
-          </div>
-        )}
+        <h3 className="text-lg font-semibold line-clamp-2">{title}</h3>
+        <p className="text-sm text-muted-foreground mt-1">{price}</p>
+        <div className="mt-2 flex flex-col gap-1">
+          <span className="text-sm">{releaseDate}</span>
+          {exclusive && (
+            <span className="text-sm text-blue-600 font-medium">{exclusive}</span>
+          )}
+        </div>
       </div>
     </Link>
   )

@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { ensureUserProfile } from "@/utils/supabase/ensure-profile";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -12,7 +13,26 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { data: { user }, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+    
+    if (sessionError) {
+      console.error('Error exchanging code for session:', sessionError);
+      return NextResponse.redirect(`${origin}/error`);
+    }
+
+    if (user) {
+      // Ensure user profile exists
+      const result = await ensureUserProfile(supabase);
+      if ('error' in result) {
+        console.error('Failed to ensure user profile exists:', result.error, result.details);
+      } else {
+        console.log('Profile ensured:', result.profile);
+        if (result.isNewProfile) {
+          // Redirect new users to onboarding
+          return NextResponse.redirect(`${origin}/onboarding`);
+        }
+      }
+    }
   }
 
   if (redirectTo) {
