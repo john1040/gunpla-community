@@ -1,5 +1,6 @@
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "./types";
+import { createClient as createSupabaseClient } from "./client";
+import { User } from "@supabase/supabase-js";
 
 export interface Comment {
   id: string;
@@ -23,81 +24,164 @@ interface CommentLike {
 }
 
 // Initialize Supabase client
-const createClient = () => createClientComponentClient<Database>();
+const createClient = () => createSupabaseClient();
 
 // Comment functions
+// Helper function to extract numeric ID from URL
+function getKitId(url: string): string {
+  const matches = url.match(/\/item\/(\d+)/);
+  return matches ? matches[1] : url;
+}
+
+// Function to ensure kit exists in database
+async function ensureKitExists(kitId: string) {
+  const supabase = createClient();
+  const numericKitId = getKitId(kitId);
+
+  // First check if kit exists
+  const { data: existingKit } = await supabase
+    .from("kits")
+    .select("id")
+    .eq("id", numericKitId)
+    .single();
+
+  if (!existingKit) {
+    // If kit doesn't exist, create it with minimal data
+    const { error: insertError } = await supabase
+      .from("kits")
+      .insert({
+        id: numericKitId,
+        name_en: `RG Kit ${numericKitId}`, // Placeholder name
+        grade: "RG",
+        scale: "1/144"
+      });
+
+    if (insertError) {
+      console.error("Error ensuring kit exists:", insertError);
+      throw new Error(`Failed to create kit record: ${insertError.message}`);
+    }
+  }
+}
+
 export async function addComment(kitId: string, content: string) {
   const supabase = createClient();
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) throw new Error("Must be logged in to comment");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Must be logged in to comment");
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Could not get user data");
 
-  const { data, error } = await supabase
-    .from("comments")
-    .insert({
-      kit_id: kitId,
-      user_id: user.user.id,
-      content,
-    })
-    .select(`
-      *,
-      user:user_profiles(
-        id,
-        display_name,
-        avatar_url
-      )
-    `)
-    .single();
+  const numericKitId = getKitId(kitId);
+  let data;
 
-  if (error) throw error;
+  try {
+    // Ensure kit exists before adding comment
+    await ensureKitExists(numericKitId);
+
+    const result = await supabase
+      .from("comments")
+      .insert({
+        kit_id: numericKitId,
+        user_id: user.id,
+        content,
+      })
+      .select(`
+        *,
+        user:user_profiles(
+          id,
+          display_name,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (result.error) {
+      console.error("Supabase error:", result.error);
+      throw new Error(`Failed to add comment: ${result.error.message}`);
+    }
+
+    if (!result.data) {
+      throw new Error("No data returned after adding comment");
+    }
+
+    data = result.data;
+  } catch (error) {
+    console.error("Error in addComment:", error);
+    throw error;
+  }
+
   return data;
 }
 
 export async function getComments(kitId: string) {
   const supabase = createClient();
+  let currentUser: User | null = null;
   
-  // Get current user to check if they've liked comments
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  const { data, error } = await supabase
-    .from("comments")
-    .select(`
-      *,
-      user:user_profiles(
-        id,
-        display_name,
-        avatar_url
-      ),
-      likes:comment_likes(count),
-      user_likes:comment_likes!inner(id, user_id)
-    `)
-    .eq("kit_id", kitId)
-    .order("created_at", { ascending: false });
+  try {
+    // Get current user to check if they've liked comments
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUser = user;
+    }
+    
+    const numericKitId = getKitId(kitId);
+    
+    const { data, error } = await supabase
+      .from("comments")
+      .select(`
+        *,
+        user:user_profiles(
+          id,
+          display_name,
+          avatar_url
+        ),
+        likes:comment_likes(count),
+        user_likes:comment_likes(id, user_id)
+      `)
+      .eq("kit_id", numericKitId)
+      .order("created_at", { ascending: false });
 
-  if (error) throw error;
+    if (error) {
+      console.error("Supabase error:", error);
+      throw new Error(`Failed to get comments: ${error.message}`);
+    }
 
-  // Transform data to include likes count and whether user has liked
-  return data.map(comment => ({
-    ...comment,
-    likes_count: comment.likes?.[0]?.count ?? 0,
-    user_has_liked: comment.user_likes?.some((like: CommentLike) => 
-      like.user_id === user?.id
-    ) ?? false
-  }));
+    // If no comments found, return empty array
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Transform data to include likes count and whether user has liked
+    return data.map(comment => ({
+      ...comment,
+      likes_count: comment.likes?.[0]?.count ?? 0,
+      user_has_liked: comment.user_likes?.some((like: CommentLike) =>
+        like.user_id === currentUser?.id
+      ) ?? false
+    }));
+  } catch (error) {
+    console.error("Error in getComments:", error);
+    throw error;
+  }
 }
 
 export async function toggleCommentLike(commentId: string) {
   const supabase = createClient();
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) throw new Error("Must be logged in to like comments");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Must be logged in to like comments");
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Could not get user data");
 
   // Check if user has already liked
   const { data: existingLike } = await supabase
     .from("comment_likes")
     .select()
     .eq("comment_id", commentId)
-    .eq("user_id", user.user.id)
+    .eq("user_id", user.id)
     .single();
 
   if (existingLike) {
@@ -106,7 +190,7 @@ export async function toggleCommentLike(commentId: string) {
       .from("comment_likes")
       .delete()
       .eq("comment_id", commentId)
-      .eq("user_id", user.user.id);
+      .eq("user_id", user.id);
 
     if (error) throw error;
     return false;
@@ -116,7 +200,7 @@ export async function toggleCommentLike(commentId: string) {
       .from("comment_likes")
       .insert({
         comment_id: commentId,
-        user_id: user.user.id
+        user_id: user.id
       });
 
     if (error) throw error;
@@ -128,14 +212,19 @@ export async function toggleCommentLike(commentId: string) {
 export async function addRating(kitId: string, rating: number) {
   const supabase = createClient();
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) throw new Error("Must be logged in to rate");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Must be logged in to rate");
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Could not get user data");
+
+  const numericKitId = getKitId(kitId);
 
   const { data, error } = await supabase
     .from("ratings")
     .upsert({
-      kit_id: kitId,
-      user_id: user.user.id,
+      kit_id: numericKitId,
+      user_id: user.id,
       rating
     })
     .select()
@@ -148,10 +237,12 @@ export async function addRating(kitId: string, rating: number) {
 export async function getKitRating(kitId: string) {
   const supabase = createClient();
 
+  const numericKitId = getKitId(kitId);
+
   const { data, error } = await supabase
     .from("ratings")
     .select("rating")
-    .eq("kit_id", kitId);
+    .eq("kit_id", numericKitId);
 
   if (error) throw error;
 
@@ -169,14 +260,19 @@ export async function getKitRating(kitId: string) {
 export async function addToWantedList(kitId: string) {
   const supabase = createClient();
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) throw new Error("Must be logged in to add to wanted list");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Must be logged in to add to wanted list");
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Could not get user data");
+
+  const numericKitId = getKitId(kitId);
 
   const { data, error } = await supabase
     .from("wanted_list")
     .insert({
-      kit_id: kitId,
-      user_id: user.user.id
+      kit_id: numericKitId,
+      user_id: user.id
     })
     .select()
     .single();
@@ -195,14 +291,19 @@ export async function addToWantedList(kitId: string) {
 export async function removeFromWantedList(kitId: string) {
   const supabase = createClient();
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) throw new Error("Must be logged in to remove from wanted list");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Must be logged in to remove from wanted list");
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Could not get user data");
+
+  const numericKitId = getKitId(kitId);
 
   const { error } = await supabase
     .from("wanted_list")
     .delete()
-    .eq("kit_id", kitId)
-    .eq("user_id", user.user.id);
+    .eq("kit_id", numericKitId)
+    .eq("user_id", user.id);
 
   if (error) throw error;
 }
@@ -210,14 +311,19 @@ export async function removeFromWantedList(kitId: string) {
 export async function isInWantedList(kitId: string) {
   const supabase = createClient();
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) return false;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return false;
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const numericKitId = getKitId(kitId);
 
   const { data, error } = await supabase
     .from("wanted_list")
     .select()
-    .eq("kit_id", kitId)
-    .eq("user_id", user.user.id)
+    .eq("kit_id", numericKitId)
+    .eq("user_id", user.id)
     .single();
 
   if (error) {

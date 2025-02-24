@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button'
 import rgKits from '../../../../public/data/rg.json'
 import { ImageCarousel } from '@/components/kits/image-carousel'
 import { CommentsSection } from '@/components/kits/comments-section'
-import { useEffect, useState } from 'react'
 import { addRating, getKitRating, addToWantedList, removeFromWantedList, isInWantedList } from '@/utils/supabase/kit-interactions'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/utils/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
-import { use } from 'react'
+import { use, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface Rating {
   average: number
@@ -30,39 +30,108 @@ interface KitPageProps {
 export default function KitPage({ params }: KitPageProps) {
   const { id } = use(params)
   const kit = getKitById(id)
-  const [rating, setRating] = useState<Rating | null>(null)
-  const [isRating, setIsRating] = useState(false)
-  const [isInWanted, setIsInWanted] = useState(false)
-  const [isUpdatingWanted, setIsUpdatingWanted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  useEffect(() => {
-    // Load rating and wanted status
-    const loadData = async () => {
-      try {
-        const [rating, wanted] = await Promise.all([
-          getKitRating(id),
-          isInWantedList(id)
-        ])
-        setRating(rating)
-        setIsInWanted(wanted)
-      } catch (error) {
-        console.error("Error loading data:", error)
+  // Query for current user
+  const { data: user, isLoading: isUserLoading } = useQuery({
+    queryKey: ['user'],
+    queryFn: async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) {
+        console.error('Error getting session:', error)
+        return null
       }
+      if (!session) {
+        return null
+      }
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError) {
+        console.error('Error getting user:', userError)
+        return null
+      }
+      return user
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false // Don't retry on error
+  })
+  console.log('meow', user)
+  // Query for kit rating
+  const { data: rating } = useQuery<Rating | null>({
+    queryKey: ['rating', id],
+    queryFn: () => getKitRating(id)
+  })
+
+  // Query for wanted list status
+  const { data: isInWanted } = useQuery({
+    queryKey: ['wanted', id],
+    queryFn: () => isInWantedList(id),
+    enabled: !!user // Only run if user is logged in
+  })
+
+  // Mutation for rating
+  const ratingMutation = useMutation({
+    mutationFn: async ({ kitId, rating }: { kitId: string, rating: number }) => {
+      await addRating(kitId, rating)
+      return getKitRating(kitId)
+    },
+    onSuccess: (newRating) => {
+      queryClient.setQueryData(['rating', id], newRating)
+      toast({
+        title: "Rating submitted",
+        description: "Thank you for your rating!"
+      })
+    },
+    onError: (error) => {
+      console.error("Error submitting rating:", error)
+      toast({
+        title: "Error submitting rating",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
     }
+  })
 
-    // Get current user
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+  // Mutation for wanted list
+  const wantedListMutation = useMutation({
+    mutationFn: async ({ kitId, add }: { kitId: string, add: boolean }) => {
+      if (add) {
+        await addToWantedList(kitId)
+        return true
+      } else {
+        await removeFromWantedList(kitId)
+        return false
+      }
+    },
+    onSuccess: (isNowWanted) => {
+      queryClient.setQueryData(['wanted', id], isNowWanted)
+      toast({
+        description: isNowWanted ? "Added to wanted list!" : "Removed from wanted list"
+      })
+    },
+    onError: (error) => {
+      console.error("Error updating wanted list:", error)
+      toast({
+        title: "Error updating wanted list",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
     }
+  })
 
-    loadData()
-    getUser()
+  // Subscribe to auth state and wanted list changes
+  useEffect(() => {
+    // Auth state changes
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          queryClient.invalidateQueries({ queryKey: ['user'] })
+        }
+      }
+    )
 
-    // Subscribe to wanted list changes
+    // Wanted list changes
     const channel = supabase
       .channel('wanted_list')
       .on('postgres_changes', {
@@ -70,17 +139,17 @@ export default function KitPage({ params }: KitPageProps) {
         schema: 'public',
         table: 'wanted_list',
         filter: `kit_id=eq.${id}`
-      }, async () => {
-        // Refresh wanted list status
-        const wanted = await isInWantedList(id)
-        setIsInWanted(wanted)
+      }, () => {
+        // Invalidate and refetch wanted status
+        queryClient.invalidateQueries({ queryKey: ['wanted', id] })
       })
       .subscribe()
 
     return () => {
+      authSubscription.unsubscribe()
       supabase.removeChannel(channel)
     }
-  }, [id, supabase])
+  }, [id, supabase, queryClient])
 
   if (!kit) {
     notFound()
@@ -96,25 +165,7 @@ export default function KitPage({ params }: KitPageProps) {
       return
     }
 
-    setIsRating(true)
-    try {
-      await addRating(id, newRating)
-      const updatedRating = await getKitRating(id)
-      setRating(updatedRating)
-      toast({
-        title: "Rating submitted",
-        description: "Thank you for your rating!"
-      })
-    } catch (error) {
-      console.error("Error submitting rating:", error)
-      toast({
-        title: "Error submitting rating",
-        description: "Please try again later.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsRating(false)
-    }
+    ratingMutation.mutate({ kitId: id, rating: newRating })
   }
 
   const handleWantedListToggle = async () => {
@@ -127,31 +178,7 @@ export default function KitPage({ params }: KitPageProps) {
       return
     }
 
-    setIsUpdatingWanted(true)
-    try {
-      if (isInWanted) {
-        await removeFromWantedList(id)
-        setIsInWanted(false)
-        toast({
-          description: "Removed from wanted list"
-        })
-      } else {
-        await addToWantedList(id)
-        setIsInWanted(true)
-        toast({
-          description: "Added to wanted list!"
-        })
-      }
-    } catch (error) {
-      console.error("Error updating wanted list:", error)
-      toast({
-        title: "Error updating wanted list",
-        description: "Please try again later.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsUpdatingWanted(false)
-    }
+    wantedListMutation.mutate({ kitId: id, add: !isInWanted })
   }
 
   return (
@@ -190,9 +217,9 @@ export default function KitPage({ params }: KitPageProps) {
                         <button
                           key={star}
                           onClick={() => handleRate(star)}
-                          disabled={isRating}
+                          disabled={ratingMutation.isPending}
                           className={`text-2xl transition-colors ${
-                            isRating ? 'cursor-not-allowed opacity-50' : 'hover:text-yellow-400'
+                            ratingMutation.isPending ? 'cursor-not-allowed opacity-50' : 'hover:text-yellow-400'
                           }`}
                         >
                           ★
@@ -224,9 +251,9 @@ export default function KitPage({ params }: KitPageProps) {
                 className="w-full"
                 variant={isInWanted ? "default" : "outline"}
                 onClick={handleWantedListToggle}
-                disabled={isUpdatingWanted}
+                disabled={wantedListMutation.isPending}
               >
-                {isUpdatingWanted ? (
+                {wantedListMutation.isPending ? (
                   "Updating..."
                 ) : isInWanted ? (
                   "Remove from Wanted List"
@@ -239,7 +266,7 @@ export default function KitPage({ params }: KitPageProps) {
         </div>
 
         {/* Comments Section */}
-        <CommentsSection kitId={id} />
+        <CommentsSection kitId={id} user={user} isLoading={isUserLoading} />
       </div>
     </div>
   )

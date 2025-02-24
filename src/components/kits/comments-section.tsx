@@ -3,48 +3,78 @@
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { Comment, addComment, getComments, toggleCommentLike } from "@/utils/supabase/kit-interactions"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createClient } from "@/utils/supabase/client"
 import { useToast } from "@/components/ui/use-toast"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
 interface CommentsProps {
   kitId: string
+  user: any | null | undefined
+  isLoading: boolean
 }
 
-export function CommentsSection({ kitId }: CommentsProps) {
+export function CommentsSection({ kitId, user, isLoading }: CommentsProps) {
   const [comment, setComment] = useState("")
-  const [comments, setComments] = useState<Comment[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingLike, setIsLoadingLike] = useState<string | null>(null)
-  const [user, setUser] = useState<any>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
+  console.log('test',user)
+  // Query for comments
+  const { data: comments = [] } = useQuery<Comment[]>({
+    queryKey: ['comments', kitId],
+    queryFn: () => getComments(kitId),
+  })
 
-  useEffect(() => {
-    // Load comments
-    const loadComments = async () => {
-      try {
-        const comments = await getComments(kitId)
-        setComments(comments)
-      } catch (error) {
-        console.error("Error loading comments:", error)
-        toast({
-          title: "Error loading comments",
-          description: "Please try again later.",
-          variant: "destructive"
+  // Mutation for adding comments
+  const addCommentMutation = useMutation({
+    mutationFn: ({ kitId, content }: { kitId: string, content: string }) => 
+      addComment(kitId, content),
+    onSuccess: () => {
+      setComment("")
+      toast({
+        title: "Comment posted",
+        description: "Your comment has been added successfully."
+      })
+    },
+    onError: (error) => {
+      console.error("Error posting comment:", error)
+      toast({
+        title: "Error posting comment",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
+    }
+  })
+
+  // Mutation for liking comments
+  const toggleLikeMutation = useMutation({
+    mutationFn: (commentId: string) => toggleCommentLike(commentId),
+    onSuccess: (isLiked, commentId) => {
+      queryClient.setQueryData(['comments', kitId], (oldData: Comment[] = []) => {
+        return oldData.map(comment => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likes_count: isLiked ? comment.likes_count + 1 : comment.likes_count - 1,
+              user_has_liked: isLiked
+            }
+          }
+          return comment
         })
-      }
+      })
+    },
+    onError: (error) => {
+      console.error("Error toggling like:", error)
+      toast({
+        title: "Error updating like",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
     }
+  })
 
-    // Get current user
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-
-    loadComments()
-    getUser()
-
-    // Subscribe to new comments
+  // Subscribe to new comments
+  useEffect(() => {
     const channel = supabase
       .channel('comments')
       .on('postgres_changes', {
@@ -52,43 +82,21 @@ export function CommentsSection({ kitId }: CommentsProps) {
         schema: 'public',
         table: 'comments',
         filter: `kit_id=eq.${kitId}`
-      }, async payload => {
-        // Fetch the complete comment data including user profile
-        const comments = await getComments(kitId)
-        const newComment = comments.find(c => c.id === payload.new.id)
-        if (newComment) {
-          setComments(prev => [newComment, ...prev])
-        }
+      }, () => {
+        // Invalidate and refetch comments
+        queryClient.invalidateQueries({ queryKey: ['comments', kitId] })
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [kitId, supabase, toast])
+  }, [kitId, supabase, queryClient])
 
   const handleSubmitComment = async () => {
     if (!comment.trim()) return
 
-    setIsLoading(true)
-    try {
-      const newComment = await addComment(kitId, comment)
-      // Let the subscription handle adding the comment
-      setComment("")
-      toast({
-        title: "Comment posted",
-        description: "Your comment has been added successfully."
-      })
-    } catch (error) {
-      console.error("Error posting comment:", error)
-      toast({
-        title: "Error posting comment",
-        description: "Please try again later.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    addCommentMutation.mutate({ kitId, content: comment })
   }
 
   const handleLikeComment = async (commentId: string) => {
@@ -101,51 +109,31 @@ export function CommentsSection({ kitId }: CommentsProps) {
       return
     }
 
-    setIsLoadingLike(commentId)
-    try {
-      const isLiked = await toggleCommentLike(commentId)
-      setComments(prev => prev.map(comment => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            likes_count: isLiked 
-              ? comment.likes_count + 1 
-              : comment.likes_count - 1,
-            user_has_liked: isLiked
-          }
-        }
-        return comment
-      }))
-    } catch (error) {
-      console.error("Error toggling like:", error)
-      toast({
-        title: "Error updating like",
-        description: "Please try again later.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoadingLike(null)
-    }
+    toggleLikeMutation.mutate(commentId)
   }
 
   return (
     <div className="mt-12">
       <h2 className="text-2xl font-bold mb-6">Comments</h2>
       <div className="space-y-6">
-        {user ? (
+        {isLoading ? (
+          <div className="text-center p-4 border rounded-lg bg-muted">
+            Loading...
+          </div>
+        ) : user ? (
           <div className="border rounded-lg p-4">
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add a comment..."
               className="w-full min-h-[100px] p-2 border rounded-md mb-2"
-              disabled={isLoading}
+              disabled={addCommentMutation.isPending}
             />
-            <Button 
+            <Button
               onClick={handleSubmitComment}
-              disabled={isLoading || !comment.trim()}
+              disabled={addCommentMutation.isPending || !comment.trim()}
             >
-              {isLoading ? "Posting..." : "Post Comment"}
+              {addCommentMutation.isPending ? "Posting..." : "Post Comment"}
             </Button>
           </div>
         ) : (
@@ -183,7 +171,7 @@ export function CommentsSection({ kitId }: CommentsProps) {
                 variant={comment.user_has_liked ? "default" : "ghost"}
                 size="sm"
                 onClick={() => handleLikeComment(comment.id)}
-                disabled={!user || isLoadingLike === comment.id}
+                disabled={!user || toggleLikeMutation.isPending}
               >
                 ♥ {comment.likes_count}
               </Button>
