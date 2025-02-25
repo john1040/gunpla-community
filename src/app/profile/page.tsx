@@ -1,6 +1,20 @@
 import { createClient } from "@/utils/supabase/server";
 import { ensureUserProfile } from "@/utils/supabase/ensure-profile";
-import { User } from "@supabase/supabase-js";
+import { getUserWantedList, getUserActivity } from "@/utils/supabase/kit-interactions";
+import { ProfileHeader } from "@/components/profile/profile-header";
+import { WishlistSection } from "@/components/profile/wishlist-section";
+import { ActivitySection } from "@/components/profile/activity-section";
+import { handleRemoveFromWishlist, handleRefreshKit } from "./actions";
+
+// Mark this page as dynamic
+export const dynamic = 'force-dynamic';
+
+interface UserProfile {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+}
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -40,42 +54,45 @@ export default async function ProfilePage() {
             </pre>
           )}
         </div>
-        <div className="bg-gray-100 p-4 rounded">
-          <h2 className="font-bold mb-2">User Information:</h2>
-          <DisplayUserInfo user={user} />
-        </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Profile</h1>
-      <div className="bg-gray-100 p-4 rounded">
-        <h2 className="font-bold mb-2">User Information:</h2>
-        <pre className="overflow-auto">
-          {JSON.stringify({ 
-            profile: result.profile,
-            user: {
-              id: user.id,
-              email: user.email,
-              metadata: user.user_metadata
-            }
-          }, null, 2)}
-        </pre>
+  const profile = result.profile as UserProfile;
+  if (!profile) {
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Profile Error</h1>
+        <p className="text-red-600">Profile data not found</p>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-function DisplayUserInfo({ user }: { user: User }) {
+  // Fetch profile data
+  const [wantedList, activity] = await Promise.all([
+    getUserWantedList(user.id),
+    getUserActivity(user.id)
+  ]);
+
   return (
-    <pre className="overflow-auto">
-      {JSON.stringify({ 
-        userId: user.id, 
-        email: user.email,
-        metadata: user.user_metadata 
-      }, null, 2)}
-    </pre>
+    <div className="max-w-7xl mx-auto p-4">
+      <ProfileHeader
+        profile={profile}
+        isOwnProfile={true}
+        userEmail={user.email}
+      />
+      
+      <WishlistSection
+        items={wantedList}
+        isOwnProfile={true}
+        onRemoveFromWishlist={handleRemoveFromWishlist}
+        onRefreshKit={handleRefreshKit}
+      />
+      
+      <ActivitySection
+        ratings={activity.ratings}
+        comments={activity.comments}
+      />
+    </div>
   );
 }

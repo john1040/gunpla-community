@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import rgKits from '../../../../public/data/rg.json'
 import { ImageCarousel } from '@/components/kits/image-carousel'
 import { CommentsSection } from '@/components/kits/comments-section'
-import { addRating, getKitRating, addToWantedList, removeFromWantedList, isInWantedList } from '@/utils/supabase/kit-interactions'
+import { StarRating } from '@/components/kits/star-rating'
+import { addRating, getKitRating, addToWantedList, removeFromWantedList, isInWantedList, getUserKitRating } from '@/utils/supabase/kit-interactions'
 import { createClient } from '@/utils/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
-import { use, useEffect } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface Rating {
@@ -34,6 +35,9 @@ export default function KitPage({ params }: KitPageProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
+  // Keep track of the user's current rating for UI purposes
+  const [userCurrentRating, setUserCurrentRating] = useState<number | null>(null);
+
   // Query for current user
   const { data: user, isLoading: isUserLoading } = useQuery({
     queryKey: ['user'],
@@ -56,11 +60,21 @@ export default function KitPage({ params }: KitPageProps) {
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: false // Don't retry on error
   })
-  console.log('meow', user)
+  
   // Query for kit rating
   const { data: rating } = useQuery<Rating | null>({
     queryKey: ['rating', id],
     queryFn: () => getKitRating(id)
+  })
+
+  // Query for user's current rating
+  const { data: userRating } = useQuery<number | null>({
+    queryKey: ['userRating', id],
+    queryFn: () => getUserKitRating(id),
+    enabled: !!user, // Only run if user is logged in
+    onSuccess: (data) => {
+      setUserCurrentRating(data);
+    }
   })
 
   // Query for wanted list status
@@ -78,16 +92,17 @@ export default function KitPage({ params }: KitPageProps) {
     },
     onSuccess: (newRating) => {
       queryClient.setQueryData(['rating', id], newRating)
+      queryClient.setQueryData(['userRating', id], userCurrentRating)
       toast({
         title: "Rating submitted",
         description: "Thank you for your rating!"
       })
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error submitting rating:", error)
       toast({
         title: "Error submitting rating",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive"
       })
     }
@@ -110,29 +125,45 @@ export default function KitPage({ params }: KitPageProps) {
         description: isNowWanted ? "Added to wanted list!" : "Removed from wanted list"
       })
     },
-    onError: (error) => {
-      console.error("Error updating wanted list:", error)
+    onError: (error: Error) => {
+      console.error("Error updating wanted list:", error);
       toast({
         title: "Error updating wanted list",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive"
       })
     }
   })
 
-  // Subscribe to auth state and wanted list changes
+  // Subscribe to auth state and ratings changes
   useEffect(() => {
     // Auth state changes
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           queryClient.invalidateQueries({ queryKey: ['user'] })
+          queryClient.invalidateQueries({ queryKey: ['userRating', id] })
         }
       }
     )
 
+    // Ratings changes
+    const ratingsChannel = supabase
+      .channel('ratings_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ratings',
+        filter: `kit_id=eq.${id}`
+      }, () => {
+        // Invalidate and refetch ratings
+        queryClient.invalidateQueries({ queryKey: ['rating', id] })
+        queryClient.invalidateQueries({ queryKey: ['userRating', id] })
+      })
+      .subscribe()
+
     // Wanted list changes
-    const channel = supabase
+    const wantedChannel = supabase
       .channel('wanted_list')
       .on('postgres_changes', {
         event: '*',
@@ -147,7 +178,8 @@ export default function KitPage({ params }: KitPageProps) {
 
     return () => {
       authSubscription.unsubscribe()
-      supabase.removeChannel(channel)
+      supabase.removeChannel(ratingsChannel)
+      supabase.removeChannel(wantedChannel)
     }
   }, [id, supabase, queryClient])
 
@@ -165,6 +197,8 @@ export default function KitPage({ params }: KitPageProps) {
       return
     }
 
+    // Update local state immediately for better UX
+    setUserCurrentRating(newRating)
     ratingMutation.mutate({ kitId: id, rating: newRating })
   }
 
@@ -182,91 +216,121 @@ export default function KitPage({ params }: KitPageProps) {
   }
 
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-5xl mx-auto">
+        {/* Breadcrumb */}
+        <div className="text-sm mb-6">
+          <span className="text-gray-500">RG Series</span>
+          <span className="mx-2 text-gray-400">→</span>
+          <span className="font-medium">{kit.title}</span>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Image Carousel */}
-          <div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
             <ImageCarousel images={kit.imgUrlList} title={kit.title} />
           </div>
 
           {/* Kit Details */}
           <div>
-            <h1 className="text-3xl font-bold mb-2">{kit.title}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-4">{kit.title}</h1>
             <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-4">
-                  {rating ? (
-                    <>
-                      <span className="text-2xl font-semibold">
-                        ★ {rating.average.toFixed(1)}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <h3 className="text-lg font-medium mb-3">Ratings</h3>
+                {rating ? (
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center">
+                      <span className="text-xl font-semibold text-yellow-500">
+                        {rating.average.toFixed(1)}
                       </span>
-                      <span className="text-muted-foreground">
-                        ({rating.count} {rating.count === 1 ? 'rating' : 'ratings'})
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">No ratings yet</span>
-                  )}
-                </div>
-                {user && (
-                  <div className="mt-2">
-                    <div className="text-sm text-muted-foreground mb-1">Rate this kit:</div>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => handleRate(star)}
-                          disabled={ratingMutation.isPending}
-                          className={`text-2xl transition-colors ${
-                            ratingMutation.isPending ? 'cursor-not-allowed opacity-50' : 'hover:text-yellow-400'
-                          }`}
-                        >
-                          ★
-                        </button>
-                      ))}
+                      <span className="text-yellow-500 ml-1">★</span>
                     </div>
+                    <span className="text-gray-500 text-sm">
+                      ({rating.count} {rating.count === 1 ? 'rating' : 'ratings'})
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-gray-500 mb-4">No ratings yet</div>
+                )}
+                
+                {user ? (
+                  <>
+                    <div className="text-sm text-gray-600 mb-2">
+                      {userRating ? "Your rating (click to change):" : "Rate this kit:"}
+                    </div>
+                    <StarRating
+                      initialRating={userCurrentRating ?? undefined}
+                      disabled={ratingMutation.isPending}
+                      onRate={handleRate}
+                      size="md"
+                    />
+                    {ratingMutation.isPending && (
+                      <div className="text-sm text-blue-500 mt-2">Saving your rating...</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">
+                    Sign in to rate this kit
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                  RG
-                </span>
-                <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                  1/144
-                </span>
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <h3 className="text-lg font-medium mb-3">Details</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    RG
+                  </span>
+                  <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                    1/144
+                  </span>
+                  {kit.exclusive && (
+                    <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                      {kit.exclusive}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+                  <div className="text-gray-500">Release Date</div>
+                  <div className="font-medium">{kit.releaseDate}</div>
+                  
+                  <div className="text-gray-500">Price</div>
+                  <div className="font-medium">{kit.price}</div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="font-medium">Release Date: {kit.releaseDate}</p>
-                <p className="font-medium">Price: {kit.price}</p>
-                {kit.exclusive && (
-                  <p className="text-blue-600">{kit.exclusive}</p>
-                )}
+              <div className="mt-4">
+                <Button 
+                  className="w-full"
+                  variant={isInWanted ? "default" : "outline"}
+                  onClick={handleWantedListToggle}
+                  disabled={wantedListMutation.isPending}
+                  size="lg"
+                >
+                  {wantedListMutation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </span>
+                  ) : isInWanted ? (
+                    "Remove from Wanted List"
+                  ) : (
+                    "Add to Wanted List"
+                  )}
+                </Button>
               </div>
-
-              <Button 
-                className="w-full"
-                variant={isInWanted ? "default" : "outline"}
-                onClick={handleWantedListToggle}
-                disabled={wantedListMutation.isPending}
-              >
-                {wantedListMutation.isPending ? (
-                  "Updating..."
-                ) : isInWanted ? (
-                  "Remove from Wanted List"
-                ) : (
-                  "Add to Wanted List"
-                )}
-              </Button>
             </div>
           </div>
         </div>
 
         {/* Comments Section */}
-        <CommentsSection kitId={id} user={user} isLoading={isUserLoading} />
+        <div className="mt-12 bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+          <CommentsSection kitId={id} user={user} isLoading={isUserLoading} />
+        </div>
       </div>
     </div>
   )

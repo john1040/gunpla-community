@@ -34,7 +34,7 @@ function getKitId(url: string): string {
 }
 
 // Function to ensure kit exists in database
-async function ensureKitExists(kitId: string) {
+export async function ensureKitExists(kitId: string) {
   const supabase = createClient();
   const numericKitId = getKitId(kitId);
 
@@ -46,19 +46,71 @@ async function ensureKitExists(kitId: string) {
     .single();
 
   if (!existingKit) {
-    // If kit doesn't exist, create it with minimal data
-    const { error: insertError } = await supabase
-      .from("kits")
-      .insert({
-        id: numericKitId,
-        name_en: `RG Kit ${numericKitId}`, // Placeholder name
-        grade: "RG",
-        scale: "1/144"
+    try {
+      // Fetch RG data from public folder
+      const response = await fetch('/data/rg.json');
+      if (!response.ok) {
+        throw new Error('Failed to fetch RG data');
+      }
+      const rgData = await response.json();
+
+      // Find kit in RG data
+      const kitData = rgData.find((kit: any) => {
+        const kitUrl = kit.url;
+        return kitUrl === `/item/${numericKitId}/` || kitUrl === `https://p-bandai.jp/item/item-${numericKitId}/`;
       });
 
-    if (insertError) {
-      console.error("Error ensuring kit exists:", insertError);
-      throw new Error(`Failed to create kit record: ${insertError.message}`);
+      // Prepare kit data
+      const kitInfo = {
+        id: numericKitId,
+        name_en: kitData ? kitData.title : `RG Kit ${numericKitId}`,
+        name_jp: null,
+        grade: "RG",
+        scale: "1/144",
+        release_date: kitData ?
+          new Date(kitData.releaseDate.replace(/年|月|日/g, '-').slice(0, -1)) :
+          null,
+        product_image: kitData?.imgUrlList?.[0] || null
+      };
+
+      // Insert kit record
+      const { error: insertError } = await supabase
+        .from("kits")
+        .insert(kitInfo);
+
+      if (insertError) {
+        console.error("Error ensuring kit exists:", insertError);
+        throw new Error(`Failed to create kit record: ${insertError.message}`);
+      }
+
+      // If kit has images, insert them
+      if (kitData && kitData.imgUrlList && kitData.imgUrlList.length > 0) {
+        const { error: imageInsertError } = await supabase
+          .from("kit_images")
+          .insert(
+            kitData.imgUrlList.map((url: string) => ({
+              kit_id: numericKitId,
+              image_url: url
+            }))
+          );
+
+        if (imageInsertError) {
+          console.error("Error inserting kit images:", imageInsertError);
+        }
+      }
+    } catch (error) {
+      console.error("Error in ensureKitExists:", error);
+      // Create minimal kit data if RG data fetch fails
+      const { error: insertError } = await supabase
+        .from("kits")
+        .insert({
+          id: numericKitId,
+          name_en: `RG Kit ${numericKitId}`,
+          grade: "RG",
+          scale: "1/144"
+        });
+
+      if (insertError) throw insertError;
     }
   }
 }
@@ -209,29 +261,67 @@ export async function toggleCommentLike(commentId: string) {
 }
 
 // Rating functions
+export async function getUserKitRating(kitId: string) {
+  const supabase = createClient();
+  
+  // Check if user is authenticated
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('ratings')
+    .select('rating')
+    .eq('kit_id', kitId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching user rating:', error);
+  }
+
+  return data ? data.rating : null;
+}
+
 export async function addRating(kitId: string, rating: number) {
   const supabase = createClient();
   
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Must be logged in to rate");
-  
+  // Check if user is authenticated
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Could not get user data");
+  if (!user) {
+    throw new Error('You must be logged in to rate kits');
+  }
 
-  const numericKitId = getKitId(kitId);
-
-  const { data, error } = await supabase
-    .from("ratings")
-    .upsert({
-      kit_id: numericKitId,
-      user_id: user.id,
-      rating
-    })
-    .select()
+  // Check if user has already rated this kit
+  const { data: existingRating } = await supabase
+    .from('ratings')
+    .select('*')
+    .eq('kit_id', kitId)
+    .eq('user_id', user.id)
     .single();
 
-  if (error) throw error;
-  return data;
+  if (existingRating) {
+    // Update existing rating
+    const { error } = await supabase
+      .from('ratings')
+      .update({ rating })
+      .eq('kit_id', kitId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error updating rating:', error);
+      throw new Error('Failed to update rating');
+    }
+  } else {
+    // Insert new rating
+    const { error } = await supabase
+      .from('ratings')
+      .insert({ kit_id: kitId, user_id: user.id, rating });
+
+    if (error) {
+      console.error('Error adding rating:', error);
+      throw new Error('Failed to add rating');
+    }
+  }
 }
 
 export async function getKitRating(kitId: string) {
@@ -256,6 +346,75 @@ export async function getKitRating(kitId: string) {
   };
 }
 
+// Profile functions
+export async function getUserWantedList(userId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("wanted_list")
+    .select(`
+      *,
+      kit:kits(
+        id,
+        name_en,
+        name_jp,
+        grade,
+        scale,
+        product_image,
+        kit_images(image_url)
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserActivity(userId: string) {
+  const supabase = createClient();
+
+  // Get recent ratings
+  const { data: ratings, error: ratingsError } = await supabase
+    .from("ratings")
+    .select(`
+      *,
+      kit:kits(
+        id,
+        name_en,
+        grade,
+        product_image
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (ratingsError) throw ratingsError;
+
+  // Get recent comments
+  const { data: comments, error: commentsError } = await supabase
+    .from("comments")
+    .select(`
+      *,
+      kit:kits(
+        id,
+        name_en,
+        grade
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (commentsError) throw commentsError;
+
+  return {
+    ratings,
+    comments,
+  };
+}
+
 // Wanted List functions
 export async function addToWantedList(kitId: string) {
   const supabase = createClient();
@@ -268,24 +427,41 @@ export async function addToWantedList(kitId: string) {
 
   const numericKitId = getKitId(kitId);
 
-  const { data, error } = await supabase
-    .from("wanted_list")
-    .insert({
-      kit_id: numericKitId,
-      user_id: user.id
-    })
-    .select()
-    .single();
-
-  if (error) {
-    // If already in wanted list, don't throw error
-    if (error.code === '23505') { // Unique constraint violation
-      return null;
+  try {
+    // First try to ensure kit exists
+    try {
+      await ensureKitExists(numericKitId);
+    } catch (error) {
+      console.error('Error ensuring kit exists:', error);
+      throw new Error('Unable to add to wishlist: Could not fetch kit data');
     }
-    throw error;
+
+    // Then try to add to wishlist
+    const { data, error } = await supabase
+      .from("wanted_list")
+      .insert({
+        kit_id: numericKitId,
+        user_id: user.id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // If already in wanted list, don't throw error
+      if (error.code === '23505') { // Unique constraint violation
+        return null;
+      }
+      console.error('Database error:', error);
+      throw new Error('Failed to add to wishlist: Database error');
+    }
+    
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred');
   }
-  
-  return data;
 }
 
 export async function removeFromWantedList(kitId: string) {
