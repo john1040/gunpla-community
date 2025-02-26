@@ -9,6 +9,11 @@ interface ScrapedItem {
   url: string;
   exclusive: string;
   price: string;
+  description?: string;
+  categories: {
+    brand?: string;
+    series?: string;
+  };
   imgUrlList: string[];
 }
 
@@ -53,7 +58,7 @@ export class BandaiScraper {
 
     while (hasNextPage) {
       const url = `${this.baseUrl}?p=${page}`;
-      console.log(url)
+      // console.log(url)
       try {
         const html = await this.fetchPage(url);
         const $ = cheerio.load(html);
@@ -65,6 +70,11 @@ export class BandaiScraper {
           const isExclusive = $(element).find('.bhs_pd_cat').text().trim();
           const price = $(element).find('.bhs_pd_price').text().trim();
           const imgUrlList: string[] = [];
+          let description = '';
+          let categories: ScrapedItem['categories'] = {
+            brand: undefined,
+            series: undefined
+          };
 
           // Handle exclusive items (P-Bandai)
           if (itemUrl?.startsWith('https://p-bandai.jp/')) {
@@ -76,20 +86,32 @@ export class BandaiScraper {
           // Handle regular items
           else if (title && releaseDate && itemUrl?.startsWith('/item')) {
             const individualUrl = `https://bandai-hobby.net${itemUrl}`;
-            console.log(individualUrl);
+            // console.log(individualUrl);
             const html2 = await this.fetchPage(individualUrl);
             const $2 = cheerio.load(html2);
             
             const imgElements = $2('#bhs_gallery_thumbs li');
-            console.log('Elements found:', imgElements.length);
+            // console.log('Elements found:', imgElements.length);
             
             imgElements.each((_, element) => {
               const imgUrl = $2(element).find('img').attr('src');
-              console.log('Found imgUrl:', imgUrl);
+              // console.log('Found imgUrl:', imgUrl);
               if (imgUrl) {
                 imgUrlList.push(`https://bandai-hobby.net${imgUrl}`);
               }
             });
+
+            // Extract description
+            description = $2('.bhs_detail_explain p').html() || '';
+
+            // Extract categories from bhs_sale_works
+            const brandText = $2('.bhs_sale_works_title span').text().trim();
+            const seriesText = $2('.bhs_sale_works_series span').text().trim();
+            console.log('Found brand text:', brandText);
+            console.log('Found series text:', seriesText);
+            
+            categories.brand = brandText || undefined;
+            categories.series = seriesText || undefined;
           }
 
           return {
@@ -98,6 +120,8 @@ export class BandaiScraper {
             url: itemUrl ?? '',
             exclusive: isExclusive,
             price: price,
+            description,
+            categories,
             imgUrlList
           };
         }).get();

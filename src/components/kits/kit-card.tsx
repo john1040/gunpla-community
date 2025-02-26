@@ -9,9 +9,13 @@ interface KitCardProps {
   releaseDate: string
   exclusive: string
   url: string
+  rating?: {
+    average: number
+    count: number
+  } | null
 }
 
-export function KitCard({ title, imageUrl, price, releaseDate, exclusive, url }: KitCardProps) {
+export function KitCard({ title, imageUrl, price, releaseDate, exclusive, url, rating }: KitCardProps) {
   // Extract the ID from either format:
   // "/item/6469/" -> "6469"
   // "https://p-bandai.jp/item/item-1000216105/" -> "item-1000216105"
@@ -36,6 +40,23 @@ export function KitCard({ title, imageUrl, price, releaseDate, exclusive, url }:
           {exclusive && (
             <span className="text-sm text-blue-600 font-medium">{exclusive}</span>
           )}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-yellow-400 text-2xl">★</span>
+            {rating ? (
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-semibold text-gray-800">
+                  {rating.average.toFixed(1)}
+                </span>
+                <span className="text-gray-500">
+                  ({rating.count} {rating.count === 1 ? 'rating' : 'ratings'})
+                </span>
+              </div>
+            ) : (
+              <span className="text-gray-500 text-lg">
+                Not yet rated
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </Link>

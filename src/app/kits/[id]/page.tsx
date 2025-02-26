@@ -71,11 +71,15 @@ export default function KitPage({ params }: KitPageProps) {
   const { data: userRating } = useQuery<number | null>({
     queryKey: ['userRating', id],
     queryFn: () => getUserKitRating(id),
-    enabled: !!user, // Only run if user is logged in
-    onSuccess: (data) => {
-      setUserCurrentRating(data);
-    }
+    enabled: !!user // Only run if user is logged in
   })
+
+  // Update userCurrentRating when userRating changes
+  useEffect(() => {
+    if (userRating !== undefined && userRating !== null) {
+      setUserCurrentRating(userRating);
+    }
+  }, [userRating]);
 
   // Query for wanted list status
   const { data: isInWanted } = useQuery({
@@ -297,7 +301,31 @@ export default function KitPage({ params }: KitPageProps) {
                   
                   <div className="text-gray-500">Price</div>
                   <div className="font-medium">{kit.price}</div>
+
+                  {kit.categories?.brand && (
+                    <>
+                      <div className="text-gray-500">Brand</div>
+                      <div className="font-medium">{kit.categories.brand}</div>
+                    </>
+                  )}
+                  
+                  {kit.categories?.series && (
+                    <>
+                      <div className="text-gray-500">Series</div>
+                      <div className="font-medium">{kit.categories.series}</div>
+                    </>
+                  )}
                 </div>
+
+                {kit.description && (
+                  <div className="mt-4">
+                    <h3 className="text-lg font-medium mb-2">Description</h3>
+                    <div 
+                      className="text-sm text-gray-600"
+                      dangerouslySetInnerHTML={{ __html: kit.description }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="mt-4">
