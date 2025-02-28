@@ -10,19 +10,13 @@ import { createClient } from '@/utils/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 import { use, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { allKits } from '../../../../public/data/kits'
+import { getKitById } from '@/utils/kit-data'
 
 interface Rating {
   average: number
   count: number
 }
 
-function getKitById(targetId: string) {
-  return allKits.find(kit => {
-    const id = kit.url.split("/").filter(Boolean).pop() || ""
-    return id === targetId
-  })
-}
 
 interface KitPageProps {
   params: Promise<{ id: string }>
@@ -62,16 +56,23 @@ export default function KitPage({ params }: KitPageProps) {
   })
   
   // Query for kit rating
+  // Prefetch and cache rating data
   const { data: rating } = useQuery<Rating | null>({
     queryKey: ['rating', id],
-    queryFn: () => getKitRating(id)
+    queryFn: () => getKitRating(id),
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchOnMount: false, // Don't refetch on mount unless stale
+    refetchOnWindowFocus: false // Don't refetch on window focus
   })
 
-  // Query for user's current rating
+  // Query for user's current rating with prefetching
   const { data: userRating } = useQuery<number | null>({
     queryKey: ['userRating', id],
     queryFn: () => getUserKitRating(id),
-    enabled: !!user // Only run if user is logged in
+    enabled: !!user, // Only run if user is logged in
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false
   })
 
   // Update userCurrentRating when userRating changes
@@ -81,11 +82,14 @@ export default function KitPage({ params }: KitPageProps) {
     }
   }, [userRating]);
 
-  // Query for wanted list status
+  // Query for wanted list status with caching
   const { data: isInWanted } = useQuery({
     queryKey: ['wanted', id],
     queryFn: () => isInWantedList(id),
-    enabled: !!user // Only run if user is logged in
+    enabled: !!user, // Only run if user is logged in
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false
   })
 
   // Mutation for rating

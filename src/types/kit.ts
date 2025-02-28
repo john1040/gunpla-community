@@ -5,6 +5,7 @@ export interface Kit {
   exclusive: string
   price: string
   imgUrlList: string[]
+  description?: string
   categories?: {
     brand?: string
     series?: string

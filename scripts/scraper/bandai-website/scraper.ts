@@ -6,6 +6,7 @@ import path from 'path';
 interface ScrapedItem {
   title: string;
   releaseDate: string;
+  isoReleaseDate: string; // Added ISO format date
   url: string;
   exclusive: string;
   price: string;
@@ -15,6 +16,26 @@ interface ScrapedItem {
     series?: string;
   };
   imgUrlList: string[];
+}
+
+function parseJapaneseDate(dateString: string): string {
+  // Remove 発売 (release) from the string if present
+  dateString = dateString.replace('発売', '').trim();
+  
+  // Extract year, month, and day using regex
+  const yearMatch = dateString.match(/(\d{4})年/);
+  const monthMatch = dateString.match(/(\d{1,2})月/);
+  const dayMatch = dateString.match(/(\d{1,2})日/);
+
+  if (!yearMatch || !monthMatch) {
+    return ''; // Return empty string if we don't have at least year and month
+  }
+
+  const year = yearMatch[1];
+  const month = monthMatch[1].padStart(2, '0');
+  const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01'; // Default to 1st if no day
+
+  return `${year}-${month}-${day}`;
 }
 
 export class BandaiScraper {
@@ -114,9 +135,13 @@ export class BandaiScraper {
             categories.series = seriesText || undefined;
           }
 
+          // Parse the Japanese date into ISO format
+          const isoDate = parseJapaneseDate(releaseDate);
+
           return {
             title,
-            releaseDate,
+            releaseDate, // Keep original Japanese date
+            isoReleaseDate: isoDate, // Add ISO format date
             url: itemUrl ?? '',
             exclusive: isExclusive,
             price: price,

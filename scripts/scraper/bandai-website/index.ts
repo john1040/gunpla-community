@@ -2,17 +2,30 @@ import { BandaiScraper } from './scraper';
 import path from 'path';
 
 async function main() {
-  // Configure your scraper
+  // URLs
   const RG = 'https://bandai-hobby.net/brand/rg/';
   const HG = 'https://bandai-hobby.net/brand/hg/';
-  const baseUrl = HG;
-  const outputPath = path.join(__dirname, 'output.json');
-
-  const scraper = new BandaiScraper(baseUrl, outputPath);
+  
+  // Output paths
+  const publicDataDir = path.join(__dirname, '../../../public/data');
+  const rgOutputPath = path.join(publicDataDir, 'rg.json');
+  const hgOutputPath = path.join(publicDataDir, 'hg.json');
 
   try {
-    await scraper.scrapeItems();
-    console.log('Scraping completed successfully!');
+    // Scrape RG kits
+    console.log('Scraping RG kits...');
+    const rgScraper = new BandaiScraper(RG, rgOutputPath);
+    await rgScraper.scrapeItems();
+    console.log('RG scraping completed!');
+
+    // Scrape HG kits
+    console.log('Scraping HG kits...');
+    const hgScraper = new BandaiScraper(HG, hgOutputPath);
+    await hgScraper.scrapeItems();
+    console.log('HG scraping completed!');
+
+    console.log('All scraping completed successfully!');
+    console.log('Now run: npx tsx scripts/sync-kits.ts');
   } catch (error) {
     console.error('Error during scraping:', error);
   }

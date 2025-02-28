@@ -47,12 +47,8 @@ export async function ensureKitExists(kitId: string) {
 
   if (!existingKit) {
     try {
-      // Fetch RG data from public folder
-      const response = await fetch('/data/rg.json');
-      if (!response.ok) {
-        throw new Error('Failed to fetch RG data');
-      }
-      const rgData = await response.json();
+      // Import RG data directly
+      const rgData = (await import('../../../public/data/rg.json')).default;
 
       // Find kit in RG data
       const kitData = rgData.find((kit: any) => {
