@@ -5,7 +5,7 @@ async function main() {
   // Configure your scraper
   const RG = 'https://bandai-hobby.net/brand/rg/';
   const HG = 'https://bandai-hobby.net/brand/hg/';
-  const baseUrl = RG;
+  const baseUrl = HG;
   const outputPath = path.join(__dirname, 'output.json');
 
   const scraper = new BandaiScraper(baseUrl, outputPath);

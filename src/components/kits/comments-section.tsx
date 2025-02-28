@@ -27,10 +27,11 @@ export function CommentsSection({ kitId, user, isLoading }: CommentsProps) {
 
   // Mutation for adding comments
   const addCommentMutation = useMutation({
-    mutationFn: ({ kitId, content }: { kitId: string, content: string }) => 
+    mutationFn: ({ kitId, content }: { kitId: string, content: string }) =>
       addComment(kitId, content),
     onSuccess: () => {
-      setComment("")
+      setComment("") // Clear the input
+      queryClient.invalidateQueries({ queryKey: ['comments', kitId] }) // Trigger refetch
       toast({
         title: "Comment posted",
         description: "Your comment has been added successfully."
@@ -49,19 +50,8 @@ export function CommentsSection({ kitId, user, isLoading }: CommentsProps) {
   // Mutation for liking comments
   const toggleLikeMutation = useMutation({
     mutationFn: (commentId: string) => toggleCommentLike(commentId),
-    onSuccess: (isLiked, commentId) => {
-      queryClient.setQueryData(['comments', kitId], (oldData: Comment[] = []) => {
-        return oldData.map(comment => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              likes_count: isLiked ? comment.likes_count + 1 : comment.likes_count - 1,
-              user_has_liked: isLiked
-            }
-          }
-          return comment
-        })
-      })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', kitId] })
     },
     onError: (error) => {
       console.error("Error toggling like:", error)

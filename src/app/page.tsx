@@ -1,4 +1,23 @@
+"use client"
+
+import { useQuery } from "@tanstack/react-query"
+import { getTopRatedKits, getRecentKits } from "@/utils/supabase/kit-interactions"
+import { KitCard } from "@/components/kits/kit-card"
+import Link from "next/link"
+
 export default function Home() {
+  // Query for top rated kits
+  const { data: topRatedKits = [] } = useQuery({
+    queryKey: ['topRatedKits'],
+    queryFn: () => getTopRatedKits(4)
+  })
+
+  // Query for recent kits
+  const { data: recentKits = [] } = useQuery({
+    queryKey: ['recentKits'],
+    queryFn: () => getRecentKits(4)
+  })
+
   return (
     <div className="container mx-auto py-6 px-4">
       <section className="text-center py-12">
@@ -25,6 +44,58 @@ export default function Home() {
               Keep track of your wanted kits and share your collection
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Top Rated Kits Section */}
+      <section className="py-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Top Rated Kits</h2>
+          <Link 
+            href="/kits" 
+            className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            View all →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {topRatedKits.map((kit) => (
+            <KitCard
+              key={kit.id}
+              title={kit.name_en}
+              imageUrl={kit.imageUrl}
+              grade={kit.grade}
+              rating={{
+                average: kit.averageRating,
+                count: kit.ratingCount
+              }}
+              url={`/kits/${kit.id}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Recently Added Kits Section */}
+      <section className="py-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Recently Added</h2>
+          <Link 
+            href="/kits" 
+            className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            View all →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {recentKits.map((kit) => (
+            <KitCard
+              key={kit.id}
+              title={kit.name_en}
+              imageUrl={kit.imageUrl}
+              grade={kit.grade}
+              url={`/kits/${kit.id}`}
+            />
+          ))}
         </div>
       </section>
     </div>

@@ -291,36 +291,53 @@ export async function addRating(kitId: string, rating: number) {
     throw new Error('You must be logged in to rate kits');
   }
 
-  // Check if user has already rated this kit
-  const { data: existingRating } = await supabase
-    .from('ratings')
-    .select('*')
-    .eq('kit_id', kitId)
-    .eq('user_id', user.id)
-    .single();
+  try {
+    const numericKitId = getKitId(kitId);
 
-  if (existingRating) {
-    // Update existing rating
-    const { error } = await supabase
+    // Ensure kit exists before adding rating
+    await ensureKitExists(numericKitId);
+
+    // Check if user has already rated this kit
+    const { data: existingRating, error: checkError } = await supabase
       .from('ratings')
-      .update({ rating })
-      .eq('kit_id', kitId)
-      .eq('user_id', user.id);
+      .select('*')
+      .eq('kit_id', numericKitId)
+      .eq('user_id', user.id)
+      .single();
 
-    if (error) {
-      console.error('Error updating rating:', error);
-      throw new Error('Failed to update rating');
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking existing rating:', checkError);
+      throw new Error(`Failed to check existing rating: ${checkError.message}`);
     }
-  } else {
-    // Insert new rating
-    const { error } = await supabase
-      .from('ratings')
-      .insert({ kit_id: kitId, user_id: user.id, rating });
 
-    if (error) {
-      console.error('Error adding rating:', error);
-      throw new Error('Failed to add rating');
+    if (existingRating) {
+      // Update existing rating
+      const { error: updateError } = await supabase
+        .from('ratings')
+        .update({ rating })
+        .eq('kit_id', numericKitId)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating rating:', updateError);
+        throw new Error(`Failed to update rating: ${updateError.message}`);
+      }
+    } else {
+      // Insert new rating
+      const { error: insertError } = await supabase
+        .from('ratings')
+        .insert({ kit_id: numericKitId, user_id: user.id, rating });
+
+      if (insertError) {
+        console.error('Error adding rating:', insertError);
+        throw new Error(`Failed to add rating: ${insertError.message}`);
+      }
     }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred while rating the kit');
   }
 }
 
@@ -508,4 +525,68 @@ export async function isInWantedList(kitId: string) {
   }
 
   return !!data;
+}
+
+// Get top rated kits
+export async function getTopRatedKits(limit: number = 5) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('kits')
+    .select(`
+      *,
+      ratings(rating),
+      kit_images(image_url)
+    `);
+
+  if (error) {
+    console.error('Error fetching top rated kits:', error);
+    throw error;
+  }
+
+  // Calculate average rating for each kit
+  const kitsWithRatings = data
+    .map(kit => {
+      const ratings = (kit.ratings || []) as { rating: number }[];
+      const avgRating = ratings.length > 0
+        ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+        : 0;
+      const imageUrl = kit.kit_images?.[0]?.image_url || kit.product_image;
+      
+      return {
+        ...kit,
+        averageRating: avgRating,
+        ratingCount: ratings.length,
+        imageUrl
+      };
+    })
+    .filter(kit => kit.ratingCount > 0) // Only include kits with ratings
+    .sort((a, b) => b.averageRating - a.averageRating)
+    .slice(0, limit);
+
+  return kitsWithRatings;
+}
+
+// Get most recently added kits
+export async function getRecentKits(limit: number = 5) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('kits')
+    .select(`
+      *,
+      kit_images(image_url)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching recent kits:', error);
+    throw error;
+  }
+
+  return data.map(kit => ({
+    ...kit,
+    imageUrl: kit.kit_images?.[0]?.image_url || kit.product_image
+  }));
 }

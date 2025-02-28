@@ -2,7 +2,6 @@
 
 import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import rgKits from '../../../../public/data/rg.json'
 import { ImageCarousel } from '@/components/kits/image-carousel'
 import { CommentsSection } from '@/components/kits/comments-section'
 import { StarRating } from '@/components/kits/star-rating'
@@ -11,6 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 import { use, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { allKits } from '../../../../public/data/kits'
 
 interface Rating {
   average: number
@@ -18,7 +18,7 @@ interface Rating {
 }
 
 function getKitById(targetId: string) {
-  return rgKits.find(kit => {
+  return allKits.find(kit => {
     const id = kit.url.split("/").filter(Boolean).pop() || ""
     return id === targetId
   })
@@ -92,17 +92,19 @@ export default function KitPage({ params }: KitPageProps) {
   const ratingMutation = useMutation({
     mutationFn: async ({ kitId, rating }: { kitId: string, rating: number }) => {
       await addRating(kitId, rating)
-      return getKitRating(kitId)
     },
-    onSuccess: (newRating) => {
-      queryClient.setQueryData(['rating', id], newRating)
-      queryClient.setQueryData(['userRating', id], userCurrentRating)
+    onSuccess: () => {
+      // Instead of manually setting data, invalidate queries to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['rating', id] })
+      queryClient.invalidateQueries({ queryKey: ['userRating', id] })
       toast({
         title: "Rating submitted",
         description: "Thank you for your rating!"
       })
     },
     onError: (error: Error) => {
+      // Reset UI state on error
+      setUserCurrentRating(userRating || null)
       console.error("Error submitting rating:", error)
       toast({
         title: "Error submitting rating",
