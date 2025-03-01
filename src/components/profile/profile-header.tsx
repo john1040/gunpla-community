@@ -83,10 +83,10 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
+    <div className="bg-[#FFFFFF] border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-8 mb-6">
       <div className="flex items-center gap-6">
         <div 
-          className={`w-24 h-24 rounded-full overflow-hidden bg-gray-200 ${isOwnProfile ? 'cursor-pointer hover:opacity-80' : ''}`}
+          className={`w-24 h-24 overflow-hidden bg-gray-200 border-[3px] border-black ${isOwnProfile ? 'cursor-pointer hover:opacity-80' : ''}`}
           onClick={handleAvatarClick}
         >
           {previewUrl ? (
@@ -140,7 +140,7 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <button
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                className="px-6 py-3 bg-[#FFE500] text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
                 Edit Profile
               </button>
@@ -151,7 +151,7 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="displayName" className="block text-base font-bold text-black mb-2">
                     Display Name
                   </label>
                   <input
@@ -159,17 +159,17 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
                     id="displayName"
                     name="displayName"
                     defaultValue={profile.display_name || ''}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border-[3px] border-black px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:border-[#FFE500] transition-all"
                     placeholder="Enter your display name"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-base font-bold text-black mb-2">
                     Avatar
                   </label>
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200">
+                    <div className="w-16 h-16 overflow-hidden bg-gray-200 border-[3px] border-black">
                       {previewUrl ? (
                         <img
                           src={previewUrl}
@@ -198,7 +198,7 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
                     <button
                       type="button"
                       onClick={handleAvatarClick}
-                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md"
+                      className="px-4 py-2 bg-[#57FFC9] text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                     >
                       Choose Image
                     </button>
@@ -211,13 +211,13 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="px-4 py-2 bg-white text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-[#FFE500] text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                   >
                     Save Changes
                   </button>

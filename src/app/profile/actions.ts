@@ -19,51 +19,149 @@ export async function updateProfile(formData: FormData) {
       throw new Error("Could not get user data");
     }
 
-    const displayName = formData.get('displayName') as string;
-    const avatarFile = formData.get('avatar') as File;
+    // Find the display name field (it might have a prefix like 1_displayName)
+    const displayNameField = Array.from(formData.keys()).find(key => key.endsWith('displayName'));
+    const avatarField = Array.from(formData.keys()).find(key => key.endsWith('avatar'));
+    
+    if (!displayNameField) {
+      throw new Error('Display name field not found in form data');
+    }
+
+    const displayName = formData.get(displayNameField) as string;
+    const avatarFile = avatarField ? formData.get(avatarField) as File : null;
     let avatarUrl = null;
     
     // If a new avatar file was provided and it's not empty
     if (avatarFile && avatarFile.size > 0) {
-      // Delete the old avatar if it exists
-      const oldAvatarPath = `avatars/${user.id}`;
-      await supabase.storage.from('profiles').remove([oldAvatarPath]);
+      // Get file extension
+      const fileExt = avatarFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `avatars/${user.id}.${fileExt}`;
+
+      // List existing avatars to delete
+      const { data: existingFiles } = await supabase.storage
+        .from('profiles')
+        .list('avatars', {
+          limit: 1,
+          search: user.id
+        });
+
+      // Delete old avatar if it exists
+      if (existingFiles && existingFiles.length > 0) {
+        await supabase.storage
+          .from('profiles')
+          .remove([`avatars/${existingFiles[0].name}`]);
+      }
       
-      // Upload the new avatar
+      // Upload the new avatar with owner info
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('profiles')
-        .upload(`avatars/${user.id}`, avatarFile, {
+        .upload(fileName, avatarFile, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
+          contentType: avatarFile.type,
+          duplex: 'half'
         });
+
+      if (uploadError) {
+        console.error('Upload error:', {
+          error: uploadError,
+          fileName,
+          userId: user.id,
+          fileSize: avatarFile.size,
+          fileType: avatarFile.type
+        });
+        throw uploadError;
+      }
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL
+      // Get the public URL (use the same path as upload)
       const { data: urlData } = supabase.storage
         .from('profiles')
-        .getPublicUrl(`avatars/${user.id}`);
+        .getPublicUrl(fileName);
+
+      if (!urlData) {
+        throw new Error('Failed to get avatar URL');
+      }
 
       avatarUrl = urlData.publicUrl;
+
+      // Log success for debugging
+      console.log('Avatar upload success:', {
+        fileName,
+        publicUrl: avatarUrl
+      });
     }
 
-    // Update profile
-    const { error } = await supabase
+    // Get current profile to verify it exists
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select()
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching profile:', {
+        error: profileError,
+        userId: user.id
+      });
+      throw profileError;
+    }
+
+    if (!profile) {
+      throw new Error('Profile not found');
+    }
+
+    // Update profile with debugging
+    const { data: updateData, error: updateError } = await supabase
       .from("user_profiles")
       .update({
         display_name: displayName,
         ...(avatarUrl && { avatar_url: avatarUrl }),
       })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .select();
 
-    if (error) throw error;
-    
+    if (updateError) {
+      console.error('Profile update error:', {
+        error: updateError,
+        userId: user.id,
+        currentProfile: profile,
+        updateData: {
+          display_name: displayName,
+          avatar_url: avatarUrl
+        }
+      });
+      throw updateError;
+    }
+
     // Revalidate the page to refresh the data
     revalidatePath('/profile');
     return { success: true, avatarUrl };
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    throw error;
+  } catch (error: any) {
+    let userInfo;
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      userInfo = data.user?.id;
+    } catch (authError) {
+      console.error('Failed to get user info in error handler:', authError);
+    }
+
+    // Log detailed error information
+    console.error('Profile update error details:', {
+      error,
+      errorMessage: error.message,
+      errorCode: error.code,
+      details: error.details,
+      hint: error.hint,
+      formDataKeys: Array.from(formData.keys()),
+      userId: userInfo,
+      supabaseErrorCode: error?.statusCode
+    });
+    
+    // Throw a more informative error
+    throw new Error(`Failed to update profile: ${error.message || 'Unknown error'} (Code: ${error?.statusCode || 'unknown'})`);
   }
 }
 
