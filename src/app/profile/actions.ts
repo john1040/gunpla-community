@@ -53,6 +53,12 @@ export async function updateProfile(formData: FormData) {
       }
       
       // Upload the new avatar with owner info
+      console.log('Uploading avatar:', {
+        fileName,
+        userId: user.id,
+        fileSize: avatarFile.size,
+        fileType: avatarFile.type
+      });
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('profiles')
         .upload(fileName, avatarFile, {

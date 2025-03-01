@@ -119,6 +119,7 @@ export function CommentsSection({ kitId, user, isLoading }: CommentsProps) {
               className="w-full min-h-[100px] p-2 border rounded-md mb-2"
               disabled={addCommentMutation.isPending}
             />
+            
             <Button
               onClick={handleSubmitComment}
               disabled={addCommentMutation.isPending || !comment.trim()}
