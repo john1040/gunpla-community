@@ -21,6 +21,14 @@ async function syncKits() {
     // Read JSON files
     const rgData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/rg.json'), 'utf8'));
     const hgData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/hg.json'), 'utf8'));
+    const mgData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/mg.json'), 'utf8'));
+    const pgData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/pg.json'), 'utf8'));
+    const mgkaData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/mgka.json'), 'utf8'));
+    const fmData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/fm.json'), 'utf8'));
+    const optionPartsData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/option-parts.json'), 'utf8'));
+    const bbData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/bb.json'), 'utf8'));
+    const mgsdData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/mgsd.json'), 'utf8'));
+    const mgexData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/data/mgex.json'), 'utf8'));
 
     // Process and combine all kits
     const allKits = [
@@ -31,6 +39,38 @@ async function syncKits() {
       ...hgData.map((kit: any) => ({
         ...kit,
         grade: 'HG'
+      })),
+      ...mgData.map((kit: any) => ({
+        ...kit,
+        grade: 'MG'
+      })),
+      ...pgData.map((kit: any) => ({
+        ...kit,
+        grade: 'PG'
+      })),
+      ...mgkaData.map((kit: any) => ({
+        ...kit,
+        grade: 'MGKA'
+      })),
+      ...fmData.map((kit: any) => ({
+        ...kit,
+        grade: 'FM'
+      })),
+      ...optionPartsData.map((kit: any) => ({
+        ...kit,
+        grade: 'Option Parts'
+      })),
+      ...bbData.map((kit: any) => ({
+        ...kit,
+        grade: 'BB'
+      })),
+      ...mgsdData.map((kit: any) => ({
+        ...kit,
+        grade: 'MGSD'
+      })),
+      ...mgexData.map((kit: any) => ({
+        ...kit,
+        grade: 'MGEX'
       }))
     ];
 

@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { updateProfile } from '@/app/profile/actions';
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslationClient } from '@/hooks/use-translation-client';
+import { useParams } from 'next/navigation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { mutations } from '@/utils/queries';
 
 interface ProfileHeaderProps {
   profile: {
@@ -16,14 +19,44 @@ interface ProfileHeaderProps {
   userEmail?: string | null;
 }
 
+interface UpdateProfileResult {
+  success: boolean;
+  avatarUrl?: string;
+}
+
 export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeaderProps) {
+  const params = useParams();
+  const locale = params.locale as string;
+  const { t } = useTranslationClient(locale);
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [displayName, setDisplayName] = useState(profile.display_name || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(profile.avatar_url || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const updateProfileMutation = useMutation<UpdateProfileResult, Error, FormData>({
+    ...mutations.updateProfile,
+    onSuccess: (result) => {
+      setIsOpen(false);
+      if (result.avatarUrl) {
+        setPreviewUrl(result.avatarUrl);
+      }
+      // Invalidate profile queries to update data everywhere
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      toast({
+        title: t('profile.success.updated'),
+        description: t('profile.success.updateMessage')
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: t('profile.error.title'),
+        description: t('profile.error.updateFailed'),
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleAvatarClick = () => {
     if (isOwnProfile && fileInputRef.current) {
@@ -36,8 +69,8 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
-          title: "File too large",
-          description: "Please select an image under 5MB",
+          title: t('profile.error.fileTooLarge'),
+          description: t('profile.error.fileSizeLimit'),
           variant: "destructive",
         });
         return;
@@ -45,8 +78,8 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
       
       if (!file.type.startsWith('image/')) {
         toast({
-          title: "Invalid file type",
-          description: "Please select an image file",
+          title: t('profile.error.invalidFileType'),
+          description: t('profile.error.selectImageFile'),
           variant: "destructive",
         });
         return;
@@ -60,30 +93,11 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData(e.currentTarget);
-      if (avatarFile) {
-        formData.set('avatar', avatarFile);
-      }
-      const result = await updateProfile(formData);
-      setIsOpen(false);
-      if (result.avatarUrl) {
-        setPreviewUrl(result.avatarUrl);
-      }
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+    const formData = new FormData(e.currentTarget);
+    if (avatarFile) {
+      formData.set('avatar', avatarFile);
     }
+    updateProfileMutation.mutate(formData);
   };
 
   return (
@@ -96,7 +110,7 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
           {previewUrl ? (
             <img
               src={previewUrl}
-              alt={`${profile.display_name || 'User'}'s avatar`}
+              alt={`${profile.display_name || t('profile.anonymous')}'s avatar`}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -123,17 +137,17 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
             onChange={handleFileChange}
             accept="image/*"
             className="hidden"
-            aria-label="Upload avatar"
+            aria-label={t('profile.uploadAvatar')}
           />
         </div>
         
         <div className="flex-1">
           <h1 className="text-2xl font-bold mb-2">
-            {profile.display_name || 'Anonymous User'}
+            {profile.display_name || t('profile.anonymous')}
           </h1>
           
           <div className="text-sm text-gray-600">
-            <p>Member since {new Date(profile.created_at).toISOString().split('T')[0]}</p>
+            <p>{t('profile.memberSince', { date: new Date(profile.created_at).toISOString().split('T')[0] })}</p>
             {isOwnProfile && userEmail && (
               <p className="mt-1">{userEmail}</p>
             )}
@@ -146,17 +160,17 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
               <button
                 className="px-6 py-3 bg-[#FFE500] text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
-                Edit Profile
+                {t('profile.editProfile')}
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Edit Profile</DialogTitle>
+                <DialogTitle>{t('profile.editProfile')}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div>
                   <label htmlFor="displayName" className="block text-base font-bold text-black mb-2">
-                    Display Name
+                    {t('profile.displayName')}
                   </label>
                   <input
                     type="text"
@@ -164,20 +178,20 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
                     name="displayName"
                     defaultValue={profile.display_name || ''}
                     className="w-full border-[3px] border-black px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:border-[#FFE500] transition-all"
-                    placeholder="Enter your display name"
+                    placeholder={t('profile.enterDisplayName')}
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">
-                    Avatar
+                    {t('profile.avatar')}
                   </label>
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 overflow-hidden bg-gray-200 border-[3px] border-black">
                       {previewUrl ? (
                         <img
                           src={previewUrl}
-                          alt="Avatar preview"
+                          alt={t('profile.avatarPreview')}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -203,13 +217,13 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
                       type="button"
                       onClick={handleAvatarClick}
                       className="px-4 py-2 bg-[#57FFC9] text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={isSubmitting}
+                      disabled={updateProfileMutation.isPending}
                     >
-                      Choose Image
+                      {t('profile.chooseImage')}
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
+                    {t('profile.imageRequirements')}
                   </p>
                 </div>
                 <div className="flex justify-end space-x-2 pt-4">
@@ -217,25 +231,25 @@ export function ProfileHeader({ profile, isOwnProfile, userEmail }: ProfileHeade
                     type="button"
                     onClick={() => setIsOpen(false)}
                     className="px-4 py-2 bg-white text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={isSubmitting}
+                    disabled={updateProfileMutation.isPending}
                   >
-                    Cancel
+                    {t('actions.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="px-4 py-2 bg-[#FFE500] text-black font-bold border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    disabled={isSubmitting}
+                    disabled={updateProfileMutation.isPending}
                   >
-                    {isSubmitting ? (
+                    {updateProfileMutation.isPending ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Saving...
+                        {t('profile.saving')}
                       </>
                     ) : (
-                      'Save Changes'
+                      t('profile.saveChanges')
                     )}
                   </button>
                 </div>

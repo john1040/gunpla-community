@@ -1,0 +1,132 @@
+{
+  "navigation": {
+    "home": "ホーム",
+    "kits": "キット",
+    "profile": "プロフィール",
+    "onboarding": "はじめに",
+    "menu": "ナビゲーションメニュー"
+  },
+  "home": {
+    "welcome": "ガンプラコミュニティへようこそ",
+    "description": "ガンプラモデルキットを発見し、共有するための究極の目的地。ビルダーとコレクターのコミュニティに参加しましょう！",
+    "features": {
+      "browse": {
+        "title": "キットを探す",
+        "description": "リアルグレードとハイグレードのガンプラキットの包括的なコレクションをご覧ください。詳細情報、評価、コミュニティレビューをチェック。",
+        "action": "全てのキットを見る"
+      },
+      "profile": {
+        "title": "あなたのコレクション",
+        "description": "プロフィールを作成し、ウィッシュリストを管理し、コミュニティとガンプラの旅を共有しましょう。",
+        "action": "プロフィールへ"
+      }
+    },
+    "languageSupport": "多言語対応"
+  },
+  "auth": {
+    "signIn": "ログイン",
+    "signOut": "ログアウト",
+    "required": "認証が必要です"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "refresh": "更新"
+  },
+  "common": {
+    "updating": "更新中...",
+    "tryAgainLater": "後でもう一度お試しください"
+  },
+  "kits": {
+    "title": "ガンプラキット",
+    "search": "キットを検索",
+    "grade": "グレード",
+    "scale": "スケール",
+    "releaseDate": "発売日",
+    "wishlist": "ウィッシュリストに追加",
+    "unwishlist": "ウィッシュリストから削除",
+    "rating": {
+      "title": "評価",
+      "submitted": "評価が送信されました",
+      "thankYou": "評価ありがとうございます！",
+      "error": "評価の送信中にエラーが発生しました",
+      "saving": "評価を保存中...",
+      "count": "{{count}}件の評価",
+      "noRatings": "まだ評価がありません",
+      "yourRating": "あなたの評価（クリックで変更）：",
+      "rateKit": "このキットを評価：",
+      "signInToRate": "評価するにはログインしてください",
+      "loginRequired": "キットを評価するにはログインが必要です"
+    },
+    "details": {
+      "title": "詳細",
+      "price": "価格",
+      "brand": "ブランド",
+      "series": "シリーズ",
+      "description": "説明"
+    },
+    "wishlist": {
+      "added": "ウィッシュリストに追加しました！",
+      "removed": "ウィッシュリストから削除しました",
+      "error": "ウィッシュリストの更新中にエラーが発生しました",
+      "loginRequired": "ウィッシュリストを管理するにはログインが必要です"
+    },
+    "filters": {
+      "allBrands": "全メーカー",
+      "allSeries": "全シリーズ",
+      "allGrades": "全グレード",
+      "realGrade": "リアルグレード（RG）",
+      "highGrade": "ハイグレード（HG）"
+    },
+    "pagination": {
+      "previous": "前へ",
+      "next": "次へ",
+      "showing": "{{total}}件中{{start}}-{{end}}件を表示"
+    }
+  },
+  "profile": {
+    "title": "プロフィール",
+    "anonymous": "匿名ユーザー",
+    "memberSince": "登録日：{{date}}",
+    "editProfile": "プロフィール編集",
+    "displayName": "表示名",
+    "enterDisplayName": "表示名を入力してください",
+    "avatar": "アバター",
+    "uploadAvatar": "アバターをアップロード",
+    "avatarPreview": "アバターのプレビュー",
+    "chooseImage": "画像を選択",
+    "imageRequirements": "最大ファイルサイズ：5MB。対応形式：JPG、PNG、GIF",
+    "saving": "保存中...",
+    "saveChanges": "変更を保存",
+    "error": {
+      "title": "エラー",
+      "fileTooLarge": "ファイルが大きすぎます",
+      "fileSizeLimit": "5MB以下の画像を選択してください",
+      "invalidFileType": "無効なファイル形式",
+      "selectImageFile": "画像ファイルを選択してください",
+      "updateFailed": "プロフィールの更新に失敗しました。もう一度お試しください。"
+    },
+    "success": {
+      "updated": "プロフィール更新完了",
+      "updateMessage": "プロフィールが正常に更新されました。"
+    },
+    "authError": "認証エラー",
+    "notLoggedIn": "ログインしていません",
+    "pleaseLogin": "プロフィールを表示するにはログインしてください。",
+    "notFound": "プロフィールデータが見つかりません",
+    "errorDetails": "エラーの詳細"
+  },
+  "footer": {
+    "copyright": "ガンプラコミュニティ。全ての権利を保有。",
+    "terms": "利用規約",
+    "privacy": "プライバシー"
+  },
+  "language": {
+    "select": "言語を選択",
+    "en": "English",
+    "ja": "日本語",
+    "zh-Hant": "繁體中文"
+  }
+}

@@ -125,44 +125,48 @@ const ratingQueries = useQueries({
           <h1 className="text-3xl font-bold">Gunpla Kits</h1>
         </div>
 
-        <div className="flex items-center space-x-4 bg-white p-4 rounded-lg shadow-sm">
-          <select
-            className="border rounded-md px-3 py-2 w-[180px]"
-            value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
-          >
-            <option value="">All Brands</option>
-            {brands.map(brand => (
-              <option key={brand} value={brand}>{brand}</option>
-            ))}
-          </select>
+        <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white p-4 rounded-lg shadow-sm">
+          <div className="grid grid-cols-2 md:flex md:flex-row gap-4 w-full">
+            <select
+              className="border rounded-md px-3 py-2 w-full md:w-[180px]"
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+            >
+              <option value="">All Brands</option>
+              {brands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
 
-          <select
-            className="border rounded-md px-3 py-2 w-[180px]"
-            value={selectedSeries}
-            onChange={(e) => setSelectedSeries(e.target.value)}
-          >
-            <option value="">All Series</option>
-            {series.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            <select
+              className="border rounded-md px-3 py-2 w-full md:w-[180px]"
+              value={selectedSeries}
+              onChange={(e) => setSelectedSeries(e.target.value)}
+            >
+              <option value="">All Series</option>
+              {series.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
 
-          <select
-            className="border rounded-md px-3 py-2 w-[150px]"
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-          >
-            <option value="">All Grades</option>
-            <option value="RG">Real Grade (RG)</option>
-            <option value="HG">High Grade (HG)</option>
-          </select>
+            <select
+              className="border rounded-md px-3 py-2 w-full md:w-[150px]"
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+            >
+              <option value="">All Grades</option>
+              <option value="RG">Real Grade (RG)</option>
+              <option value="HG">High Grade (HG)</option>
+            </select>
 
-          <SearchBox
-            allKits={allKits}
-            onSearch={setSearchQuery}
-            value={searchQuery}
-          />
+            <div className="col-span-2 md:col-span-1 md:flex-1">
+              <SearchBox
+                allKits={allKits}
+                onSearch={setSearchQuery}
+                value={searchQuery}
+              />
+            </div>
+          </div>
         </div>
       </div>
       

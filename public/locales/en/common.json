@@ -1,0 +1,133 @@
+{
+  "navigation": {
+    "home": "Home",
+    "kits": "Kits",
+    "profile": "Profile",
+    "onboarding": "Onboarding",
+    "menu": "Navigation Menu"
+  },
+  "home": {
+    "welcome": "Welcome to Gunpla Community",
+    "description": "Your ultimate destination for discovering and sharing Gunpla model kits. Join our community of builders and collectors!",
+    "features": {
+      "browse": {
+        "title": "Browse Kits",
+        "description": "Explore our comprehensive collection of Real Grade and High Grade Gunpla kits. Find detailed information, ratings, and community reviews.",
+        "action": "View All Kits"
+      },
+      "profile": {
+        "title": "Your Collection",
+        "description": "Create your profile, track your wishlist, and share your Gunpla journey with the community.",
+        "action": "Go to Profile"
+      }
+    },
+    "languageSupport": "Available in multiple languages"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "required": "Authentication Required"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "refresh": "Refresh"
+  },
+  "common": {
+    "updating": "Updating...",
+    "tryAgainLater": "Please try again later"
+  },
+  "kits": {
+    "title": "Gunpla Kits",
+    "search": "Search kits",
+    "grade": "Grade",
+    "scale": "Scale",
+    "releaseDate": "Release Date",
+    "addToWishlist": "Add to Wishlist",
+    "unwishlist": "Remove from Wishlist",
+    "rating": {
+      "title": "Ratings",
+      "submitted": "Rating submitted",
+      "thankYou": "Thank you for your rating!",
+      "error": "Error submitting rating",
+      "saving": "Saving your rating...",
+      "count": "{{count}} rating_one",
+      "count_other": "{{count}} ratings",
+      "noRatings": "No ratings yet",
+      "yourRating": "Your rating (click to change):",
+      "rateKit": "Rate this kit:",
+      "signInToRate": "Sign in to rate this kit",
+      "loginRequired": "Please log in to rate kits"
+    },
+    "details": {
+      "title": "Details",
+      "price": "Price",
+      "brand": "Brand",
+      "series": "Series",
+      "description": "Description"
+    },
+    "wishlist": {
+      "added": "Added to wanted list!",
+      "removed": "Removed from wanted list",
+      "error": "Error updating wanted list",
+      "loginRequired": "Please log in to manage your wanted list"
+    },
+    "filters": {
+      "allBrands": "All Brands",
+      "allSeries": "All Series",
+      "allGrades": "All Grades",
+      "realGrade": "Real Grade (RG)",
+      "highGrade": "High Grade (HG)"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "showing": "Showing {{start}}-{{end}} of {{total}} kits"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "anonymous": "Anonymous User",
+    "memberSince": "Member since {{date}}",
+    "editProfile": "Edit Profile",
+    "displayName": "Display Name",
+    "enterDisplayName": "Enter your display name",
+    "avatar": "Avatar",
+    "uploadAvatar": "Upload avatar",
+    "avatarPreview": "Avatar preview",
+    "chooseImage": "Choose Image",
+    "imageRequirements": "Maximum file size: 5MB. Supported formats: JPG, PNG, GIF",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes",
+    "error": {
+      "title": "Error",
+      "fileTooLarge": "File too large",
+      "fileSizeLimit": "Please select an image under 5MB",
+      "invalidFileType": "Invalid file type",
+      "selectImageFile": "Please select an image file",
+      "updateFailed": "Failed to update profile. Please try again."
+    },
+    "success": {
+      "updated": "Profile Updated",
+      "updateMessage": "Your profile has been successfully updated."
+    },
+    "authError": "Authentication Error",
+    "notLoggedIn": "Not Logged In",
+    "pleaseLogin": "Please log in to view your profile.",
+    "notFound": "Profile data not found",
+    "errorDetails": "Error Details"
+  },
+  "footer": {
+    "copyright": "Gunpla Community. All rights reserved.",
+    "terms": "Terms",
+    "privacy": "Privacy"
+  },
+  "language": {
+    "select": "Select Language",
+    "en": "English",
+    "ja": "日本語",
+    "zh-Hant": "繁體中文"
+  }
+}

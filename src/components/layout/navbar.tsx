@@ -1,147 +1,193 @@
-"use client"
+'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Session, User } from '@supabase/supabase-js'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/utils/supabase/client'
-import { useEffect, useState } from 'react'
+import { useTranslationClient } from '@/hooks/use-translation-client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { queries, mutations } from '@/utils/queries'
+import { toast } from '@/components/ui/use-toast'
+import { LanguageSwitcher } from './language-switcher'
+import { Menu } from 'lucide-react'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { useState } from 'react'
 
-export function Navbar() {
+interface NavbarProps {
+  children?: React.ReactNode;
+  locale: string;
+}
+
+export function Navbar({ locale }: NavbarProps) {
+  const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
-  const [user, setUser] = useState<User | null>(null)
-  const [displayName, setDisplayName] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+  const queryClient = useQueryClient()
+  const { t, isReady } = useTranslationClient(locale)
 
-  useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser(session.user)
-        fetchUserProfile(session.user.id)
-      } else {
-        setUser(null)
-        setDisplayName(null)
-      }
-      setIsLoading(false)
-    })
+  // Query for current user session
+  const { data: session } = useQuery(queries.session)
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setUser(session.user)
-        fetchUserProfile(session.user.id)
-      } else {
-        setUser(null)
-        setDisplayName(null)
-      }
-      
-      if (event === 'SIGNED_OUT') {
-        // Optional: Redirect to home page on sign out
-        window.location.href = '/'
-      }
-    })
+  // Query for user profile when session exists
+  const { data: profile, isLoading: isProfileLoading } = useQuery(
+    queries.userProfile(session?.user?.id)
+  )
 
-    return () => {
-      subscription.unsubscribe()
+  // Set up auth state change listener
+  useQuery(queries.authListener(queryClient, locale))
+
+  // Sign in mutation
+  const signInMutation = useMutation({
+    ...mutations.signIn,
+    onError: (error: Error) => {
+      toast({
+        title: t('auth.error'),
+        description: error.message,
+        variant: "destructive"
+      })
     }
-  }, [])
+  })
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('display_name')
-        .eq('id', userId)
-        .single()
-
-      if (error) throw error
-      setDisplayName(profile?.display_name)
-    } catch (error) {
-      console.error('Error fetching user profile:', error)
+  // Sign out mutation
+  const signOutMutation = useMutation({
+    ...mutations.signOut,
+    onError: (error: Error) => {
+      toast({
+        title: t('auth.error'),
+        description: error.message,
+        variant: "destructive"
+      })
     }
-  }
+  })
 
   const navItems = [
-    { href: '/', label: 'Home' },
-    { href: '/kits', label: 'Kits' },
+    { href: `/${locale}`, label: 'navigation.home' },
+    { href: `/${locale}/kits`, label: 'navigation.kits' }
   ]
 
-  const handleSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      })
-
-      if (error) {
-        console.error('Sign in error:', error.message)
-        // Optional: Show error to user via toast notification
-      }
-    } catch (error) {
-      console.error('Unexpected error during sign in:', error)
+  // Function to check if a nav item is active
+  const isNavItemActive = (href: string) => {
+    const currentPath = pathname || ''
+    // For home page
+    if (href === `/${locale}`) {
+      return currentPath === href
     }
+    // For other pages, check if pathname starts with the href
+    return currentPath.startsWith(href)
   }
 
-  const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error.message)
-        // Optional: Show error to user via toast notification
-      }
-    } catch (error) {
-      console.error('Unexpected error during sign out:', error)
-    }
+  // Show skeleton loading state while translations are loading
+  if (!isReady) {
+    return (
+      <nav className="border-b">
+        <div className="flex h-16 items-center px-4 container mx-auto">
+          <div className="md:flex hidden items-center space-x-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
+            ))}
+          </div>
+          <div className="md:hidden">
+            <div className="h-8 w-8 bg-gray-200 animate-pulse rounded" />
+          </div>
+          <div className="ml-auto">
+            <div className="h-8 w-24 bg-gray-200 animate-pulse rounded" />
+          </div>
+        </div>
+      </nav>
+    )
   }
 
   return (
     <nav className="border-b">
       <div className="flex h-16 items-center px-4 container mx-auto">
-        <div className="flex items-center space-x-4">
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="mr-2">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[240px] sm:w-[300px]">
+              <SheetHeader>
+                <SheetTitle>{t('navigation.menu')}</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-4 mt-6">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      'text-sm font-medium transition-colors hover:text-primary',
+                      isNavItemActive(item.href) ? 'text-foreground' : 'text-muted-foreground'
+                    )}
+                  >
+                    {t(item.label)}
+                  </Link>
+                ))}
+                {session?.user && (
+                  <Link
+                    href={`/${locale}/profile`}
+                    onClick={() => setIsOpen(false)}
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {profile?.display_name || t('navigation.profile')}
+                  </Link>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center space-x-4">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
                 'text-sm font-medium transition-colors hover:text-primary',
-                pathname === item.href ? 'text-foreground' : 'text-muted-foreground'
+                isNavItemActive(item.href) ? 'text-foreground' : 'text-muted-foreground'
               )}
             >
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
         </div>
+
+        {/* Right Side Items (Language + Auth) */}
         <div className="ml-auto flex items-center space-x-4">
-          {isLoading ? (
+          <LanguageSwitcher locale={locale} />
+          {isProfileLoading ? (
             <div className="h-9 w-[120px] animate-pulse rounded-md bg-muted" />
-          ) : user ? (
+          ) : session?.user ? (
             <>
-              <Button asChild variant="ghost" className="text-sm font-medium">
-                <Link href="/profile">
-                  {displayName || 'Profile'}
+              <Button asChild variant="ghost" className="text-sm font-medium hidden md:inline-flex">
+                <Link href={`/${locale}/profile`}>
+                  {profile?.display_name || t('navigation.profile')}
                 </Link>
               </Button>
-              <Button 
-                onClick={handleSignOut} 
-                variant="ghost" 
+              <Button
+                onClick={() => signOutMutation.mutate()}
+                variant="ghost"
                 className="text-sm font-medium"
               >
-                Sign Out
+                {t('auth.signOut')}
               </Button>
             </>
           ) : (
-            <Button 
-              onClick={handleSignIn} 
+            <Button
+              onClick={() => signInMutation.mutate(locale)}
               className="text-sm font-medium"
             >
-              Sign In with Google
+              {t('auth.signIn')}
             </Button>
           )}
         </div>
