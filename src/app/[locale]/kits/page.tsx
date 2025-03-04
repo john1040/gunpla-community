@@ -9,13 +9,20 @@ import { useState, useMemo, useEffect } from "react"
 import { useTranslationClient } from '@/hooks/use-translation-client'
 import { useParams } from 'next/navigation'
 
-import { allKits } from '@/utils/kit-data';
+import { allKits, getLocalizedTitle, getLocalizedBrand, getLocalizedSeries } from '@/utils/kit-data';
 import { useQueryClient } from '@tanstack/react-query';
 
 // Helper function to get unique values from an array
-const getUniqueValues = (array: Kit[], key: 'brand' | 'series'): string[] => {
+const getUniqueValues = (array: Kit[], key: 'brand' | 'series', locale: string): string[] => {
   const values = array
-    .map(item => item.categories?.[key])
+    .map(item => {
+      if (key === 'brand') {
+        return getLocalizedBrand(item, locale);
+      } else if (key === 'series' && item.categories?.series) {
+        return getLocalizedSeries(item, locale);
+      }
+      return null;
+    })
     .filter((value): value is string => value != null);
   return Array.from(new Set(values)).sort();
 };
@@ -33,8 +40,8 @@ export default function KitsPage() {
   const itemsPerPage = 12; // Show 12 kits per page (3x4 grid)
 
   // Get unique brands and series
-  const brands = useMemo(() => getUniqueValues(allKits, 'brand'), [allKits]);
-  const series = useMemo(() => getUniqueValues(allKits, 'series'), [allKits]);
+  const brands = useMemo(() => getUniqueValues(allKits, 'brand', locale), [allKits, locale]);
+  const series = useMemo(() => getUniqueValues(allKits, 'series', locale), [allKits, locale]);
 
   // Memoize selected filters for query key stability
   const filters = useMemo(() => ({
@@ -80,13 +87,13 @@ export default function KitsPage() {
       }
 
       const filtered = allKits.filter(kit => {
-        const matchesBrand = !selectedBrand || kit.categories?.brand === selectedBrand;
-        const matchesSeries = !selectedSeries || kit.categories?.series === selectedSeries;
+        const matchesBrand = !selectedBrand || getLocalizedBrand(kit, locale) === selectedBrand;
+        const matchesSeries = !selectedSeries || (kit.categories?.series && getLocalizedSeries(kit, locale) === selectedSeries);
         const matchesGrade = !selectedGrade ||
           (selectedGrade === 'RG' && kit.url.includes('/item/')) ||
           (selectedGrade === 'HG' && !kit.url.includes('/item/'));
         const matchesSearch = !searchQuery ||
-          kit.title.toLowerCase().includes(searchQuery.toLowerCase());
+          getLocalizedTitle(kit, locale).toLowerCase().includes(searchQuery.toLowerCase());
         
         return matchesBrand && matchesSeries && matchesGrade && matchesSearch;
       });
@@ -154,6 +161,7 @@ export default function KitsPage() {
             onSearch={setSearchQuery}
             value={searchQuery}
             placeholder={t?.('kits.search') || 'Search kits'}
+            locale={locale}
           />
         </div>
       </div>
@@ -167,7 +175,7 @@ export default function KitsPage() {
               onMouseEnter={() => prefetchKit(id)}
             >
               <KitCard
-                title={kit.title}
+                title={getLocalizedTitle(kit, locale)}
                 imageUrl={kit.imgUrlList[0]}
                 price={kit.price}
                 releaseDate={kit.releaseDate}
@@ -175,6 +183,7 @@ export default function KitsPage() {
                 url={kit.url}
                 rating={ratingQueries[index].data}
                 grade={kit.url.includes('/item/') ? 'RG' : 'HG'}
+                locale={locale}
               />
             </div>
           );

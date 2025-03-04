@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Globe } from 'lucide-react'
 import { languages } from '@/i18n/settings'
 import { useTranslationClient } from '@/hooks/use-translation-client'
+import { usePathname } from 'next/navigation'
 
 interface LanguageSwitcherProps {
   locale: string;
@@ -13,9 +14,11 @@ interface LanguageSwitcherProps {
 export function LanguageSwitcher({ locale }: LanguageSwitcherProps) {
   const { t, isReady } = useTranslationClient(locale)
 
+  const pathname = usePathname()
+  
   const redirectedPathname = (targetLocale: string) => {
-    // Always use absolute path and replace the locale segment
-    const segments = window.location.pathname.split('/')
+    // Replace the locale segment in the pathname
+    const segments = pathname.split('/')
     segments[1] = targetLocale
     return segments.join('/')
   }

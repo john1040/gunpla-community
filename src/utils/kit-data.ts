@@ -1,13 +1,13 @@
-import rgKitsRaw from '../../public/data/rg.json';
-import hgKitsRaw from '../../public/data/hg.json';
-import mgKitsRaw from '../../public/data/mg.json';
-import pgKitsRaw from '../../public/data/pg.json';
-import mgkaKitsRaw from '../../public/data/mgka.json';
-import fmKitsRaw from '../../public/data/fm.json';
-import optionPartsKitsRaw from '../../public/data/option-parts.json';
-import bbKitsRaw from '../../public/data/bb-sd.json';
-import mgsdKitsRaw from '../../public/data/mgsd.json';
-import mgexKitsRaw from '../../public/data/mgex.json';
+import rgKitsRaw from '../../public/data/translated-google/rg.json';
+import hgKitsRaw from '../../public/data/translated-google/hg.json';
+import mgKitsRaw from '../../public/data/translated-google/mg.json';
+import pgKitsRaw from '../../public/data/translated-google/pg.json';
+import mgkaKitsRaw from '../../public/data/translated-google/mgka.json';
+import fmKitsRaw from '../../public/data/translated-google/fm.json';
+import optionPartsKitsRaw from '../../public/data/translated-google/option-parts.json';
+import bbKitsRaw from '../../public/data/translated-google/bb-sd.json';
+import mgsdKitsRaw from '../../public/data/translated-google/mgsd.json';
+import mgexKitsRaw from '../../public/data/translated-google/mgex.json';
 
 import { Kit, isTranslatedKit, LegacyKit, TranslatedKit } from '@/types/kit';
 

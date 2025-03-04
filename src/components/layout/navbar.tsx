@@ -30,13 +30,20 @@ export function Navbar({ locale }: NavbarProps) {
   const queryClient = useQueryClient()
   const { t, isReady } = useTranslationClient(locale)
 
-  // Query for current user session
-  const { data: session } = useQuery(queries.session)
+  // Query for current user session with longer stale time
+  const { data: session } = useQuery({
+    ...queries.session,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
+  })
 
-  // Query for user profile when session exists
-  const { data: profile, isLoading: isProfileLoading } = useQuery(
-    queries.userProfile(session?.user?.id)
-  )
+  // Query for user profile when session exists with longer stale time
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
+    ...queries.userProfile(session?.user?.id),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    enabled: !!session?.user
+  })
 
   // Set up auth state change listener
   useQuery(queries.authListener(queryClient, locale))
@@ -81,21 +88,21 @@ export function Navbar({ locale }: NavbarProps) {
     return currentPath.startsWith(href)
   }
 
-  // Show skeleton loading state while translations are loading
+  // Only show skeleton on initial page load when translations aren't ready
   if (!isReady) {
     return (
-      <nav className="border-b">
+      <nav className="border-b animate-pulse">
         <div className="flex h-16 items-center px-4 container mx-auto">
           <div className="md:flex hidden items-center space-x-4">
             {[1, 2].map((i) => (
-              <div key={i} className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
+              <div key={i} className="h-4 w-20 bg-gray-200 rounded" />
             ))}
           </div>
           <div className="md:hidden">
-            <div className="h-8 w-8 bg-gray-200 animate-pulse rounded" />
+            <div className="h-8 w-8 bg-gray-200 rounded" />
           </div>
           <div className="ml-auto">
-            <div className="h-8 w-24 bg-gray-200 animate-pulse rounded" />
+            <div className="h-8 w-24 bg-gray-200 rounded" />
           </div>
         </div>
       </nav>
@@ -165,31 +172,33 @@ export function Navbar({ locale }: NavbarProps) {
         {/* Right Side Items (Language + Auth) */}
         <div className="ml-auto flex items-center space-x-4">
           <LanguageSwitcher locale={locale} />
-          {isProfileLoading ? (
-            <div className="h-9 w-[120px] animate-pulse rounded-md bg-muted" />
-          ) : session?.user ? (
-            <>
-              <Button asChild variant="ghost" className="text-sm font-medium hidden md:inline-flex">
-                <Link href={`/${locale}/profile`}>
-                  {profile?.display_name || t('navigation.profile')}
-                </Link>
-              </Button>
+          <div className="transition-opacity duration-200 ease-in-out">
+            {isProfileLoading ? (
+              <div className="h-9 w-[120px] animate-pulse rounded-md bg-muted" />
+            ) : session?.user ? (
+              <div className="flex items-center space-x-4">
+                <Button asChild variant="ghost" className="text-sm font-medium hidden md:inline-flex">
+                  <Link href={`/${locale}/profile`}>
+                    {profile?.display_name || t('navigation.profile')}
+                  </Link>
+                </Button>
+                <Button
+                  onClick={() => signOutMutation.mutate()}
+                  variant="ghost"
+                  className="text-sm font-medium"
+                >
+                  {t('auth.signOut')}
+                </Button>
+              </div>
+            ) : (
               <Button
-                onClick={() => signOutMutation.mutate()}
-                variant="ghost"
+                onClick={() => signInMutation.mutate(locale)}
                 className="text-sm font-medium"
               >
-                {t('auth.signOut')}
+                {t('auth.signIn')}
               </Button>
-            </>
-          ) : (
-            <Button
-              onClick={() => signInMutation.mutate(locale)}
-              className="text-sm font-medium"
-            >
-              {t('auth.signIn')}
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </nav>

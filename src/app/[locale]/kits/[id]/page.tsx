@@ -10,7 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 import { use, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getKitById } from '@/utils/kit-data'
+import { getKitById, getLocalizedTitle, getLocalizedBrand, getLocalizedSeries, getLocalizedDescription } from '@/utils/kit-data'
 import { useTranslationClient } from '@/hooks/use-translation-client'
 
 interface Rating {
@@ -221,16 +221,16 @@ export default function KitPage({ params }: KitPageProps) {
         <div className="text-sm mb-6">
           <span className="text-gray-500">{t('kits.grade')}</span>
           <span className="mx-2 text-gray-400">→</span>
-          <span className="font-medium">{kit.title}</span>
+          <span className="font-medium">{getLocalizedTitle(kit, locale)}</span>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-            <ImageCarousel images={kit.imgUrlList} title={kit.title} />
+            <ImageCarousel images={kit.imgUrlList} title={getLocalizedTitle(kit, locale)} />
           </div>
 
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-4">{kit.title}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-4">{getLocalizedTitle(kit, locale)}</h1>
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <h3 className="text-lg font-medium mb-3">{t('kits.rating.title')}</h3>
@@ -298,14 +298,14 @@ export default function KitPage({ params }: KitPageProps) {
                   {kit.categories?.brand && (
                     <>
                       <div className="text-gray-500">{t('kits.details.brand')}</div>
-                      <div className="font-medium">{kit.categories.brand}</div>
+                      <div className="font-medium">{getLocalizedBrand(kit, locale)}</div>
                     </>
                   )}
                   
                   {kit.categories?.series && (
                     <>
                       <div className="text-gray-500">{t('kits.details.series')}</div>
-                      <div className="font-medium">{kit.categories.series}</div>
+                      <div className="font-medium">{getLocalizedSeries(kit, locale)}</div>
                     </>
                   )}
                 </div>
@@ -315,7 +315,7 @@ export default function KitPage({ params }: KitPageProps) {
                     <h3 className="text-lg font-medium mb-2">{t('kits.details.description')}</h3>
                     <div 
                       className="text-sm text-gray-600"
-                      dangerouslySetInnerHTML={{ __html: kit.description }}
+                      dangerouslySetInnerHTML={{ __html: getLocalizedDescription(kit, locale) }}
                     />
                   </div>
                 )}

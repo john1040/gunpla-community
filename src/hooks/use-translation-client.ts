@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 
 export function useTranslationClient(locale: string) {
-  const [isReady, setIsReady] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const { t, i18n } = useTranslation('common', { useSuspense: false })
 
   useEffect(() => {
@@ -14,20 +14,23 @@ export function useTranslationClient(locale: string) {
         if (locale !== i18n.language) {
           await i18n.changeLanguage(locale)
         }
-        setIsReady(true)
+        if (isInitialLoad) {
+          setIsInitialLoad(false)
+        }
       }
     }
 
     initializeTranslation()
-  }, [locale, i18n])
+  }, [locale, i18n, isInitialLoad])
 
-  if (!isReady) {
+  // If it's initial load, return a placeholder translator
+  if (isInitialLoad) {
     return {
       t: ((key: string) => key) as TFunction,
       i18n,
-      isReady
+      isReady: false
     }
   }
 
-  return { t, i18n, isReady }
+  return { t, i18n, isReady: true }
 }

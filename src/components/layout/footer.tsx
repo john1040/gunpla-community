@@ -36,14 +36,6 @@ export function Footer({ locale }: FooterProps) {
             © {new Date().getFullYear()} {t('footer.copyright')}
           </div>
           <div className="flex space-x-6">
-            <a 
-              href="https://github.com" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              GitHub
-            </a>
             <Link 
               href={`/${locale}/terms`}
               className="text-sm text-gray-600 hover:text-gray-900"

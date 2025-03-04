@@ -4,15 +4,17 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { Kit } from "@/types/kit"
 import { useEffect, useState, useRef } from "react"
 import { cn } from "@/utils/cn"
+import { getLocalizedTitle } from "@/utils/kit-data"
 
 export interface SearchBoxProps {
   allKits: Kit[]
   onSearch: (query: string) => void
   value: string
   placeholder?: string
+  locale: string
 }
 
-export function SearchBox({ allKits, onSearch, value, placeholder = "Search kits..." }: SearchBoxProps) {
+export function SearchBox({ allKits, onSearch, value, placeholder = "Search kits...", locale }: SearchBoxProps) {
   const [searchTerm, setSearchTerm] = useState(value)
   const [suggestions, setSuggestions] = useState<Kit[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -28,7 +30,7 @@ export function SearchBox({ allKits, onSearch, value, placeholder = "Search kits
     if (searchTerm.trim()) {
       const filtered = allKits
         .filter(kit =>
-          kit.title.toLowerCase().includes(searchTerm.toLowerCase())
+          getLocalizedTitle(kit, locale).toLowerCase().includes(searchTerm.toLowerCase())
         )
         .slice(0, 5) // Limit to 5 suggestions
       setSuggestions(filtered)
@@ -79,9 +81,10 @@ export function SearchBox({ allKits, onSearch, value, placeholder = "Search kits
   }
 
   const handleSuggestionClick = (kit: Kit) => {
-    setSearchTerm(kit.title)
+    const localizedTitle = getLocalizedTitle(kit, locale)
+    setSearchTerm(localizedTitle)
     setShowSuggestions(false)
-    onSearch(kit.title)
+    onSearch(localizedTitle)
   }
 
   return (
@@ -107,7 +110,7 @@ export function SearchBox({ allKits, onSearch, value, placeholder = "Search kits
                 selectedIndex === index && "bg-gray-100"
               )}
             >
-              {kit.title}
+              {getLocalizedTitle(kit, locale)}
             </li>
           ))}
         </ul>

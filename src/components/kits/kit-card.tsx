@@ -14,7 +14,8 @@ export interface KitCardProps {
     average: number
     count: number
   } | null
-  ratingCount?: number // For direct rating count
+  ratingCount?: number
+  locale: string // Add locale prop
 }
 
 export function KitCard({
@@ -26,7 +27,8 @@ export function KitCard({
   url,
   grade,
   rating,
-  ratingCount // New prop for direct rating count
+  ratingCount,
+  locale
 }: KitCardProps) {
   // Extract the ID from either format:
   // "/item/6469/" -> "6469"
@@ -34,7 +36,7 @@ export function KitCard({
   const id = url.split("/").filter(Boolean).pop() || ""
   
   return (
-    <Link href={`/kits/${id}`} className="block">
+    <Link href={`/${locale}/kits/${id}`} className="block">
       <div className="border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer">
         <div className="aspect-square bg-gray-100 rounded-md mb-4 overflow-hidden">
           {imageUrl && (

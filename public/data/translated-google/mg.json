@@ -151,9 +151,9 @@
     },
     "categories": {
       "brand": {
-        "ja": "MG [マスターグレード]MG [マスターグレード]／プレバンガンプラ",
-        "en": "MG [Master Grade]MG [Master Grade]/Pre-Ban Gunpla",
-        "zh-Hant": "MGMG/禁令前鋼普拉"
+        "ja": "MG [マスターグレード]",
+        "en": "MG [Master Grade]",
+        "zh-Hant": "MG"
       }
     },
     "imgUrlList": [
@@ -188,7 +188,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -621,7 +621,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -928,7 +928,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -1333,7 +1333,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -1560,7 +1560,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -1774,7 +1774,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -2196,7 +2196,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -3117,7 +3117,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -4201,7 +4201,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -4550,7 +4550,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -5550,7 +5550,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -5834,7 +5834,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -7589,7 +7589,7 @@
       "series": {
         "ja": "機動新世紀ガンダムＸ",
         "en": "After War Gundam X",
-        "zh-Hant": "戰後鋼彈X"
+        "zh-Hant": "機動新世紀鋼彈X"
       }
     },
     "imgUrlList": [
@@ -8047,7 +8047,7 @@
       "series": {
         "ja": "∀ガンダム",
         "en": "Turn A Gundam",
-        "zh-Hant": "回A鋼彈"
+        "zh-Hant": "逆A鋼彈"
       }
     },
     "imgUrlList": [
@@ -8422,7 +8422,7 @@
       "series": {
         "ja": "機動新世紀ガンダムＸ",
         "en": "After War Gundam X",
-        "zh-Hant": "戰後鋼彈X"
+        "zh-Hant": "機動新世紀鋼彈X"
       }
     },
     "imgUrlList": [
@@ -10154,7 +10154,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -10260,7 +10260,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -10441,7 +10441,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -10682,7 +10682,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -10923,7 +10923,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -10959,7 +10959,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -11295,7 +11295,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -11437,7 +11437,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -11608,7 +11608,7 @@
       "series": {
         "ja": "機動戦士ガンダム00[ダブルオー]",
         "en": "Mobile Suit Gundam 00 [Double O]",
-        "zh-Hant": "機動戰士鋼彈 00 [00]"
+        "zh-Hant": "機動戰士鋼彈 00"
       }
     },
     "imgUrlList": [
@@ -12856,7 +12856,7 @@
       "series": {
         "ja": "∀ガンダム",
         "en": "Turn A Gundam",
-        "zh-Hant": "回A鋼彈"
+        "zh-Hant": "逆A鋼彈"
       }
     },
     "imgUrlList": [
